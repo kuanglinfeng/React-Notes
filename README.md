@@ -1,5 +1,6 @@
 ---
 typora-copy-images-to: ./img
+typora-root-url: ./img
 ---
 
 # React-Notes
@@ -449,7 +450,7 @@ class Tick extends React.Component {
 
 这里的旧版指的是React在16.0.0之前的版本。
 
-![pre-lifecycle](/Users/Flinn/Desktop/React-Notes/img/pre-lifecycle-9092468.png)
+![pre-lifecycle](./img/pre-lifecycle-9092468.png)
 
 1. constructor
    1. 同一个组件对象只会调用一次constructor
@@ -483,4 +484,4 @@ class Tick extends React.Component {
 
 这里的新版指的是React在16.0.0以及之后的版本。
 
-![cur-lifecycle](/Users/Flinn/Desktop/React-Notes/img/cur-lifecycle.png)
+![cur-lifecycle](./img/cur-lifecycle.png)
