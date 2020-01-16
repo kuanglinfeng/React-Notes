@@ -485,3 +485,61 @@ class Tick extends React.Component {
 这里的新版指的是React在16.0.0以及之后的版本。
 
 ![cur-lifecycle](./img/cur-lifecycle.png)
+
+移除componentWillMount原因：有可能初始化会多次调用从而引发bug
+
+移除componentWillReceiveProps原因：React官方认为，某个数据的来源必须是单一的，这个声明周期钩子很可能引发数据既受props影响又受state影响，这是一种反模式，很可能导致bug。而且还有很多开发者经常在这个钩子函数里面，使用this做一些骚操作，这样并不好，所以React官方干脆将替代函数`getDerivedStateFromProps`都设置为static的。
+
+移除componentWillUpdate原因：这个钩子函数没啥用处
+
+添加了`getDerivedStateFromProps(newProps, newState)`：
+
+1. 当props或者state发生改变后调用
+2. 通过参数可以获取新的属性和状态
+3. 该函数是静态的
+4. 该函数的返回值会覆盖掉组件状态
+5. 这个钩子函数几乎没啥用，主要是为了替换掉getWillReceiveProps，减少骚操作
+
+添加了`getSnapshotBeforeUpdate()`：
+
+1. 真实的DOM构建完成，但还未实际渲染到页面中时调用
+2. 在该函数中，通常用于实现一些绕过React的DOM操作
+3. 该函数的返回值，会作为`componentDidUpdate`的第三个参数
+
+
+
+### 传递元素内容
+
+如果给自定义组件传递元素内容，则React会将元素内容作为children属性传递过去
+
+```jsx
+// props.children 就是组件Wrapper里包含的后代React元素
+const Wrapper = props => (
+  <div>
+    <h1>Title</h1>
+    {/* 下面一行显示的就是 <p>content</p> */}
+    {props.children}
+  </div>
+)
+
+export default class App extends React.Component {
+  render() {
+    return (
+      <Wrapper>
+        <p>content</p>
+      </Wrapper>
+    )
+  }
+}
+```
+
+
+
+### 表单
+
+受控组件：组件的使用者，有能力完全控制该组件的行为和内容。通常情况下，受控组件往往没有自身的状态，其内容完全由收到的属性控制。函数组件往往就是一种受控组件。
+
+非受控组件：组件的使用者，没有能力控制该组件的行为和内容，组件的行为和内容完全自行控制，往往是没有属性只有状态的组件
+
+**表单组件，默认情况下是非受控组件，一旦设置了表单组件的value属性，则其变为受控组件**
+
