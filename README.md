@@ -549,3 +549,97 @@ export default class App extends React.Component {
 
 
 
+### 属性默认值和类型检查
+
+
+
+#### 属性默认值
+
+通过一个静态属性`defaultProps`告知React属性默认值
+
+函数组件
+
+```jsx
+// 函数组件
+const App = (props) => {
+  return ( 
+    <div>hello {props.name}</div>
+  )
+}
+// 默认属性
+App.defaultProps = {
+  name: 'Flinn'
+}
+```
+
+类组件
+
+```jsx
+class App extends Component {
+  // 这样也可以
+  static defaultProps = {
+    name: 'Leon'
+  }
+	
+	constructor(props) {
+    // 在super之前props就已经完成了对默认props的混合
+    super(props)
+  }
+
+  render() {
+    return (
+      <div>
+        hello {this.props.name}
+      </div>
+    )
+  }
+}
+
+// App.defaultProps = {
+//   name: 'Flinn'
+// }
+```
+
+
+
+#### 属性类型检查
+
+使用库：`prop-types`
+
+对属性使用静态属性`propTypes`告知React如何检查属性
+
+propTypes支持的类型如下：
+
+```jsx
+PropTypes.any // 任意类型
+PropTypes.array // 数组类型
+PropTypes.bool // 布尔类型
+PropTypes.func // 函数类型
+PropTypes.number // 数字类型
+PropTypes.object // 对象类型
+PropTypes.string // 字符串类型
+PropTypes.symbol // 符号类型
+
+PropTypes.node // 任何可以被渲染的内容
+PropTypes.elementType // react元素
+PropTypes.instanceof (构造函数) // 必须是指定构造函数的实例
+PropTypes.oneOf([xxx, xxx]) // 枚举
+PropTypes.arrayOf(PropTypes.XXX) // 必须是某一类型组成的数组
+PropTypes.objectOf(PropTypes.XXX) // 对象由某一类型的值组成
+
+PropTypes.exact({...}) // 对象必须精确匹配传递的数据
+
+// 自定义属性检查，如果有错误，返回错误对象即可
+属性：function (props, propName, componentName) {
+  // ...
+}
+```
+
+
+
+
+
+
+
+
+
