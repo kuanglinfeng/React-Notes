@@ -620,8 +620,9 @@ PropTypes.object // 对象类型
 PropTypes.string // 字符串类型
 PropTypes.symbol // 符号类型
 
-PropTypes.node // 任何可以被渲染的内容
-PropTypes.elementType // react元素
+PropTypes.node // 任何可以被渲染的内容，如：字符串、数字、React元素
+PropTypes.element // react元素
+PropTypes.elementType, // 组件类型
 PropTypes.instanceof (构造函数) // 必须是指定构造函数的实例
 PropTypes.oneOf([xxx, xxx]) // 枚举
 PropTypes.arrayOf(PropTypes.XXX) // 必须是某一类型组成的数组
@@ -635,11 +636,262 @@ PropTypes.exact({...}) // 对象必须精确匹配传递的数据
 }
 ```
 
+演示：
+
+```jsx
+export default class ValidationComp extends React.Component {
+	
+  // 先混合属性
+  static defaultProps = {
+    count: 0
+  }
+  
+  // 再对ValidationComp组件所要接受的props进行类型约束
+  static propTypes = {
+    count: PropTypes.number
+    // 如果count是必选的:
+    // count: PropTypes.number.isRequired
+  }
+
+  render() {
+    return (
+      <div>
+        <span>{ this.props.count }</span>
+        <button>+</button>
+      </div>
+    )
+  }
+}
+```
 
 
 
+### 高阶组件
+
+HOF（Higher Order Funciton）: 高阶函数，以函数为参数，并且返回一个函数
+
+HOC（Higher Order Component）: 高阶组件，以组件作为参数，并且返回一个组件
+
+通常，可以利用HOC实现横切关注点
+
+> 举例：20个组件，每个组件在创建组件和销毁组件时，需要做日志记录
+
+> 举例：20个组件，它们需要显示一些内容，得到的数据结构完全一致
+
+这样就可以写一个高阶组件将共同的逻辑抽离出来
 
 
 
+写一个简单的记录日志的高阶组件：
+
+```jsx
+// 输出日志的高阶组件
+export default function (Comp) {
+  return class LogWrapper extends React.Component {
+
+    componentDidMount() {
+      console.log(`日志：组件${Comp.name}被创建了！${Date.now()}`)
+    }
+
+    componentWillUnmount() {
+      console.log(`日志：组件${Comp.name}被销毁了！${Date.now()}`)
+    }
+
+    render() {
+      return <Comp />
+    }
+  }
+}
+
+// 组件A
+class A extends Component {
+  render() {
+    return <h1>A</h1>
+  }
+}
+
+// 组件B
+class B extends Component {
+  render() {
+    return <h1>B</h1>
+  }
+}
+
+// 具有输出日志功能的组件A
+const ALog = withLog(A)
+
+// 具有输出日志功能的组件B
+const BLog = withLog(B)
+```
+
+注意：
+
+1. 不要在`render函数`里面使用高阶组件
+2. 不要在高阶组件内部更改传入的组件
 
 
+
+### ref
+
+ref（reference）: 引用
+
+场景：希望直接使用DOM元素中的某个方法，或者希望直接使用自定义组件中的某个方法
+
+1. ref作用于内置的html组件，得到的将是真实的DOM对象
+2. ref作用于类组件，得到的将是类的实例
+3. ref不能作用于函数组件
+
+**ref不再推荐使用字符串赋值（效率问题，且不够灵活），字符串赋值的方式将来可能会被移除**
+
+**目前，ref推荐使用对象或者是函数**
+
+字符串ref（不推荐）：
+
+```jsx
+class A extends Component {
+
+  state = { isClicked: false }
+
+  handleClick() {
+    this.setState({ isClicked: true })
+  }
+
+  render() {
+    return (
+      <h2>
+        { this.state.isClicked ? 'component A is clicked!!!' : null }
+      </h2>
+    )
+  }
+}
+
+class B extends Component {
+
+  click = () => {
+    this.refs.inputBox.focus()
+    this.refs.compA.handleClick()
+  }
+
+  render() {
+    return (
+      <div>
+        <input type="text" ref={ 'inputBox' }/>
+        <A ref={ 'compA' }/>
+        <button onClick={ this.click }>点击B组件(相当于点击了A组件，同时对输入框聚焦)</button>
+      </div>
+    )
+  }
+}
+
+
+class App extends Component {
+
+  render() {
+    return (
+      <div>
+        <A/>
+        <B/>
+      </div>
+    )
+  }
+}
+```
+
+
+
+#### **对象**
+
+通过`React.createRef`创建
+
+演示：
+
+```jsx
+class App extends Component {
+
+  constructor(props) {
+    super(props)
+    this.inputBox = React.createRef()
+  }
+
+  handleClick = () => {
+    this.inputBox.current.focus()
+  }
+
+  render() {
+    return (
+      <div>
+        <input type="text" ref={this.inputBox}/>
+        <button onClick={this.handleClick}>聚焦</button>
+      </div>
+    )
+  }
+}
+```
+
+
+
+#### 函数
+
+函数的调用时间：
+
+1. `componentDidMount`的之前会调用该函数
+
+   1. `componentDidMount`中可以使用ref了
+
+2. 如果ref的值发生了变动（旧的函数被新的函数替代），分别调用旧的函数和新的函数，时间点出现在`componentDidUpdate`之前
+
+   1. 旧的函数被调用时，传递null
+
+   2. 新的函数被调用时，传递对象
+
+   3. 示例：
+
+      ```jsx
+      class App extends Component {
+      
+        handleClick = () => {
+          this.inputBox.focus()
+        }
+      
+        render() {
+          return (
+            <div>
+              {/*下面这行代码可能会调用多次，因为每次重新render的时候传进去的函数是不同的*/}
+              <input type="text" ref={(element) => {this.inputBox = element}}/>
+              <button onClick={this.handleClick}>聚焦</button>
+            </div>
+          )
+        }
+      }
+      ```
+
+      
+
+3. **如果只是想保存一份引用可以如下操作**：
+
+   ```jsx
+   class App extends Component {
+   
+   
+     handleClick = () => {
+       this.inputBox.focus()
+     }
+   
+     getRef = element => {
+       this.inputBox = element
+     }
+   
+     render() {
+       return (
+         <div>
+           <input type="text" ref={ this.getRef }/>
+           <button onClick={ this.handleClick }>聚焦</button>
+         </div>
+       )
+     }
+   }
+   ```
+
+4. 如果ref所在的组件被卸载，会调用该函数，传递null
+
+**谨慎使用ref，ref其实是一种反模式，和React的理念是不符的。能够使用属性和状态进行控制，就不要使用ref**
