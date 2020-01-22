@@ -895,3 +895,15 @@ class App extends Component {
 4. 如果ref所在的组件被卸载，会调用该函数，传递null
 
 **谨慎使用ref，ref其实是一种反模式，和React的理念是不符的。能够使用属性和状态进行控制，就不要使用ref**
+
+
+
+#### ref转发
+
+有时候，我们需要在函数组件的内部引用ref，这时就需要使用ref转发了(`React.forwardRef`)
+
+`forwardRef方法`：
+
+1. 参数，传递的是函数组件
+2. 返回值是一个新的组件
+
