@@ -906,4 +906,5 @@ class App extends Component {
 
 1. 参数，传递的是函数组件
 2. 返回值是一个新的组件
+3. 
 
