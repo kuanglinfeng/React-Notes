@@ -904,7 +904,47 @@ class App extends Component {
 
 `forwardRef方法`：
 
-1. 参数，传递的是函数组件
+1. 参数，传递的是函数组件，不能是类组件，并且函数组件需要有第二个参数来得到ref
 2. 返回值是一个新的组件
-3. 
+
+演示：
+
+```jsx
+function A(props, ref) {
+  return (
+    <h1 ref={ref}>
+      组件A
+      <span>{ props.words }</span>
+    </h1>
+  )
+}
+
+// 你可以直接获取 DOM button 的 ref：
+const ref = React.createRef();
+
+// 传递函数组件A 得到一个新组件NewA
+const NewA = React.forwardRef(A)
+
+class App extends Component {
+
+  ARef = React.createRef()
+
+  componentDidMount() {
+    // {current: h1}
+    console.log(this.ARef)
+  }
+
+  render() {
+    return (
+      <div>
+        <NewA ref={ this.ARef } words={ 'i am a component' }/>
+      </div>
+    )
+  }
+}
+
+ReactDOM.render(<App/>, document.getElementById('root'))
+```
+
+
 
