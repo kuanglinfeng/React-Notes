@@ -919,9 +919,6 @@ function A(props, ref) {
   )
 }
 
-// 你可以直接获取 DOM button 的 ref：
-const ref = React.createRef();
-
 // 传递函数组件A 得到一个新组件NewA
 const NewA = React.forwardRef(A)
 
@@ -938,6 +935,71 @@ class App extends Component {
     return (
       <div>
         <NewA ref={ this.ARef } words={ 'i am a component' }/>
+      </div>
+    )
+  }
+}
+
+ReactDOM.render(<App/>, document.getElementById('root'))
+```
+
+高阶组件中转发ref:
+
+```jsx
+// 输出日志记录的高阶组件
+const withLog = Comp => {
+  class LogWrapper extends Component {
+    componentDidMount() {
+      console.log(`日志：组件${ Comp.name }被创建了！${ Date.now() }`)
+    }
+
+    componentWillUnmount() {
+      console.log(`日志：组件${ Comp.name }被销毁了！${ Date.now() }`)
+    }
+
+    render() {
+      // rest 代表正常的属性
+      // 将自定义的 prop 属性 “forwardedRef” 定义为 ref
+      const { forwardedRef, ...rest } = this.props
+      return <Comp { ...rest } ref={ forwardedRef }/>
+    }
+  }
+
+  // 注意 React.forwardRef 回调的第二个参数 “ref”。
+  // 我们可以将其作为常规 prop 属性传递给 LogWrapper，例如 “forwardedRef”
+  // 然后它就可以被挂载到被 LogWrapper 包裹的子组件上。
+  return React.forwardRef((props, ref) => {
+    return <LogWrapper {...props} forwardedRef={ref} />
+  })
+}
+
+// 组件A 是一个类组件
+class A extends Component {
+  render() {
+    return (
+      <h1>
+        组件A
+        <span>{ this.props.words }</span>
+      </h1>
+    )
+  }
+}
+
+// 高阶组件
+const AHoc = withLog(A)
+
+class App extends Component {
+  myRef = React.createRef()
+
+  componentDidMount() {
+    // 这样就是{ current: A } 而不是{ current: AHoc } 
+    console.log(this.myRef)
+  }
+
+  render() {
+    return (
+      <div>
+        <AHoc words={ 'hello react' } ref={ this.myRef }/>
       </div>
     )
   }
