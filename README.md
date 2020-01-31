@@ -1010,3 +1010,188 @@ ReactDOM.render(<App/>, document.getElementById('root'))
 
 
 
+### context
+
+上下文：context，表示做某一些事情的环境
+
+React上下文特点：
+
+1. 当某个组件创建了上下文后，上下文中的数据，会被所有后代组件共享
+2. 如果某个组件依赖了上下文，会导致该组件不再纯粹（因为外部数据仅来自于props）
+3. 一般情况下，用于第三方组件（通用组件）
+
+![context](/context.png)
+
+#### 旧的API
+
+**创建上下文**
+
+只有类组件才可以创建上下文
+
+1. 给类组件书写静态属性`childContextTypes`，使用该属性对上下文中的数据类型进行约束
+2. 添加实例方法`getChildContext`，该方法返回的对象，即为上下文中的数据，该数据必须满足类型约束，该方法会在每次render之后运行
+
+**使用上下文中的数据**
+
+要求：如果要使用上下中的数据，组件必须有一个静态属性`contextTypes`，该属性描述了需要获取的上下文中的数据类型
+
+1. 可以在组件的构造函数中，通过第二个参数，获取上下文数据
+2. **从组件的context属性中获取**
+3. 在函数组件中，通过第二个参数，获取上下文数据
+
+演示：
+
+```jsx
+import React, { Component } from 'react'
+import PropTypes from 'prop-types'
+
+export default class OldContext extends Component{
+
+  static childContextTypes = {
+    count: PropTypes.number
+  }
+
+  getChildContext() {
+    console.log('获取上下文中的数据')
+    return {
+      count: 99
+    }
+  }
+
+  render() {
+    return (
+      <div>
+        <ChildA />
+      </div>
+    )
+  }
+}
+
+
+const ChildA = (props, context) => (
+  <div>
+    <h1>ChildA</h1>
+    <p>ChildA Context Data: {context.count}</p>
+    <ChildB />
+  </div>
+)
+
+// 函数组件获取context 也要预先声明contextTypes为静态属性
+ChildA.contextTypes = {
+  count: PropTypes.number
+}
+
+
+class ChildB extends Component {
+
+  // 声明需要使用那些上下文中的数据
+  static contextTypes = {
+    count: PropTypes.number
+  }
+
+  constructor(props, context) {
+    // 将参数的上下文交给父类处理
+    super(props, context)
+    // { count: 99 }
+    console.log(this.context)
+  }
+
+  render() {
+    return (
+      <div>
+        <h1>ChildB</h1>
+        ChildB Context Data: { this.context.count }
+      </div>
+    )
+  }
+}
+```
+
+
+
+**上下文的数据变化**
+
+上下文的数据变化不可以直接变化，最终都是通过状态改变
+
+在上下文中加入一函数，可以用于后代组件更改上下文中的数据
+
+演示：
+
+```jsx
+import React, { Component } from 'react'
+import PropTypes from 'prop-types'
+
+export default class OldContext extends Component {
+
+  static childContextTypes = {
+    count: PropTypes.number,
+    changeCount: PropTypes.func
+  }
+
+  state = {
+    count: 999
+  }
+
+  getChildContext() {
+    console.log('获取上下文中的数据')
+    return {
+      count: this.state.count,
+      changeCount: (newCount) => {
+        this.setState({ count: newCount })
+      }
+    }
+  }
+
+  render() {
+    return (
+      <div>
+        <ChildA/>
+        {/*点击后 上下文中的数据将会加1*/ }
+        <button onClick={ () => this.setState({ count: this.state.count + 1 }) }>+</button>
+      </div>
+    )
+  }
+}
+
+
+const ChildA = (props, context) => (
+  <div>
+    <h1>ChildA</h1>
+    <p>ChildA Context Data: { context.count }</p>
+    <ChildB/>
+  </div>
+)
+
+// 函数组件获取context 也要预先声明contextTypes为静态属性
+ChildA.contextTypes = {
+  count: PropTypes.number
+}
+
+
+class ChildB extends Component {
+
+  // 声明需要使用那些上下文中的数据
+  static contextTypes = {
+    count: PropTypes.number,
+    changeCount: PropTypes.func
+  }
+
+  constructor(props, context) {
+    // 将参数的上下文交给父类处理
+    super(props, context)
+    // { count: 99 }
+    console.log(this.context)
+  }
+
+  render() {
+    return (
+      <div>
+        <h1>ChildB</h1>
+        ChildB Context Data: { this.context.count }
+        <button onClick={ () => this.context.changeCount(this.context.count + 2)}>子组件改变context count+2</button>
+      </div>
+    )
+  }
+}
+```
+
