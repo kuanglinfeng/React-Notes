@@ -1195,3 +1195,266 @@ class ChildB extends Component {
 }
 ```
 
+
+
+#### 新版API
+
+旧版API存在严重的效率问题，并且容易导致滥用
+
+新版API原理：
+
+![newContext](/newContext.png)
+
+**创建上下文**
+
+上下文是一个独立于组件的对象，该对象通过`React.createContext()创建`
+
+返回的是一个包含两个属性的对象
+
+1. Provider属性：生产者，一个组件，该组件会创建一个上下文，该组件有一个value属性，通过该属性为其数据赋值
+   1. 同一个Provider，不要用到多个组件中，如果需要在其他组件中使用该数据，应该考虑将数据提升到更高的层次
+2. Consumer属性：消费者，一个组件，它的子节点是一个函数（它的props.children需要传递一个函数），函数参数为Provider中设置的属性value，返回值为渲染的内容
+
+
+
+**使用上下文中的数据**
+
+1. 在类组件中，可以直接使用this.context获取上下文数据
+   1. 要求：必须拥有静态属性`contextType`，应赋值为创建的上下文对象
+
+2. 在函数组件中，需要使用Consumer来获取上下文数据
+   1. Consumer是一个组件
+   2. 它的子节点是一个函数（它的props.children需要传递一个函数）
+
+**注意细节**
+
+如果，上下文提供者（Context.Provider）中的value属性发生变化（地址引用不一样，Object.is()比较），会导致该上下文提供的所有后代元素全部重新渲染，无论该子元素是否有优化（无论shouldComponentUpdate函数返回什么结果）
+
+类组件中使用Provider：
+
+```jsx
+import React, { Component } from 'react'
+import PropTypes from 'prop-types'
+
+const ctx = React.createContext()
+
+export default class NewContext extends React.Component {
+
+  state = {
+    count: 999,
+    message: 'hello new context',
+    changeCount: newCount => {
+      this.setState({count: newCount})
+    }
+  }
+
+  render() {
+    const Provider = ctx.Provider
+    return (
+      <Provider value={ this.state }>
+        <div>
+          <ChildA />
+        </div>
+      </Provider>
+    )
+  }
+}
+
+class ChildA extends Component {
+
+  static contextType = ctx
+
+  render() {
+    return (
+      <div>
+        <h1>ChildA</h1>
+        <p>来自上下文的数据：count: {this.context.count}，message: {this.context.message}</p>
+        <ChildB />
+      </div>
+    )
+  }
+}
+
+class ChildB extends Component {
+
+  static contextType = ctx
+
+  render() {
+    return (
+      <div>
+        <h1>ChildB</h1>
+        <p>来自上下文的数据：count: {this.context.count}，message: {this.context.message}</p>
+        <button onClick={() => this.context.changeCount(this.context.count + 1)}>count+1</button>
+      </div>
+    )
+  }
+}
+```
+
+函数组件中使用Consumer:
+
+```jsx
+import React, { Component } from 'react'
+import PropTypes from 'prop-types'
+
+const ctx = React.createContext()
+
+export default class NewContext extends React.Component {
+
+  state = {
+    count: 999,
+    message: 'hello new context',
+    changeCount: newCount => {
+      this.setState({ count: newCount })
+    }
+  }
+
+  render() {
+    const Provider = ctx.Provider
+    return (
+      <Provider value={ this.state }>
+        <div>
+          <ChildA/>
+        </div>
+      </Provider>
+    )
+  }
+}
+
+// 函数组件中使用Consumer
+function ChildA(props) {
+  return (
+    <div>
+      <h1>ChildA</h1>
+      <div>
+        <ctx.Consumer>
+          {/*页面显示: 999, hello new context*/}
+          { value => <>{ value.count }, { value.message }</> }
+        </ctx.Consumer>
+      </div>
+      <ChildB/>
+    </div>
+  )
+}
+
+
+class ChildB extends Component {
+
+  static contextType = ctx
+
+  render() {
+    return (
+      <div>
+        <h1>ChildB</h1>
+        <p>来自上下文的数据：count: { this.context.count }，message: { this.context.message }</p>
+        <button onClick={ () => this.context.changeCount(this.context.count + 1) }>count+1</button>
+      </div>
+    )
+  }
+}
+```
+
+
+
+### PureComponent
+
+纯组件，用于避免不必要的渲染（运行render函数），主要对生命周期函数`shouldComponentUpdate`进行优化，从而提高效率
+
+优化：如果一个组件的属性和状态，都没有发生变化，重新渲染该组件是没有必要的
+
+PureComponent是一个组件，如果某个组件继承自该组件，则该组件的`shouldComponentUpdate`会进行优化，将当前的state和下一个state、当前的props和下一个props进行浅比较，如果相等则不会重新渲染
+
+用法：
+
+```jsx
+import React, { PureComponent } from 'react'
+import PropTypes from 'prop-types'
+
+// 浅比较
+function objectEqual(obj1, obj2) {
+  for (let prop in obj1) {
+    if (!Object.is(obj1[prop], obj2[prop])) {
+      return false
+    }
+  }
+  return true
+}
+
+// 继承PureComponent 相当于写了shouldComponentUpdate中的比较代码 可以大大的减少组件不必要的render次数
+export default class Task extends PureComponent {
+
+  static propTypes = {
+    // 任务名称
+    name: PropTypes.string.isRequired,
+    // 任务是否完成
+    isFinished: PropTypes.bool.isRequired
+  }
+
+  // shouldComponentUpdate(nextProps, nextState, nextContext) {
+  //   if (objectEqual(this.props, nextProps) && objectEqual(this.state, nextState)) {
+  //     return false
+  //   }
+  //   return true
+  // }
+
+  render() {
+    console.log('Task Render')
+    return (
+      <li className={ this.props.isFinished ? 'finished' : '' }>
+        { this.props.name }
+      </li>
+    )
+  }
+}
+```
+
+**注意**
+
+1. PureComponent进行的是浅比较
+   1. 为了效率，应该尽量使用PureComponent
+   2. 要求不要改动之前的状态，永远是创建新的状态覆盖原来的状态（Immutable，不可变对象）
+   3. 有一个第三方JS库，`Immutable.js`，它专门用于制作不可变对象
+2. 如果是函数组件，使用`React.memo`函数制作纯组件
+
+memo制作函数纯组件演示：
+
+```jsx
+import React, { PureComponent } from 'react'
+import PropTypes from 'prop-types'
+import './Task.css'
+import { objectEqual } from '../utils/helper'
+
+
+function Task(props) {
+  console.log('Task Render')
+  return (
+    <li className={ props.isFinished ? 'finished' : '' }>
+      { props.name }
+    </li>
+  )
+}
+
+Task.propTypes = {
+  name: PropTypes.string.isRequired,
+  isFinished: PropTypes.bool.isRequired
+}
+
+// Task变为纯组件了
+export default React.memo(Task)
+
+// 模拟实现React.memo
+function memo(FunctionComponent) {
+  return class Memo extends PureComponent {
+    render() {
+      return (
+        <>
+          { FunctionComponent(this.props) }
+        </>
+      )
+    }
+  }
+}
+// 效果是一样的
+//export default memo(Task)
+```
+
