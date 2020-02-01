@@ -1458,3 +1458,83 @@ function memo(FunctionComponent) {
 //export default memo(Task)
 ```
 
+
+
+### render props
+
+有时候，某些组件的各种功能及其处理逻辑完全一样，只是显示的部分界面不一样，建议下面的方式任选其一来解决重复代码的问题（横切关注点）
+
+1. render props
+   1. 某个组件，需要某个属性
+   2. 该属性是一个函数，函数的返回值用于渲染
+   3. 函数的参数会传递为需要的数据
+   4. 注意纯组件的属性（尽量避免每次传递的render props 的地址不一致）
+   5. 通常该属性的名字叫做`render`
+2. HOC
+
+render props演示：
+
+```jsx
+////////// MouseListener.js 文件
+import React, { PureComponent } from 'react'
+import './style.css'
+
+/**
+ * 该组件用于监听鼠标的变化
+ */
+class MouseListener extends PureComponent {
+  state = {
+    x: 0,
+    y: 0
+  }
+
+  divRef = React.createRef()
+
+  handleMouseMove = e => {
+    const {left, top} = this.divRef.current.getBoundingClientRect()
+    const x = e.clientX - left
+    const y = e.clientY - top
+    // 更新x、y的值   x、y是相对与panel左上定点的坐标
+    this.setState({x, y})
+  }
+
+  render() {
+    return (
+      <div ref={this.divRef} className={ 'point' } onMouseMove={ this.handleMouseMove }>
+        {/* 只对调用props.render()  可以渲染panel内部 有差异的UI */}
+        { this.props.render ? this.props.render(this.state) : null }
+      </div>
+    )
+  }
+}
+
+export default MouseListener
+
+/////////// index.js文件
+
+// 地址不改变，这样能保证是纯组件
+function renderPoint(mouse) {
+  return <>横坐标：{ mouse.x }, 纵坐标：{ mouse.y }</>
+}
+
+// 地址不改变，这样能保证是纯组件
+function renderDiv(mouse) {
+  return (
+  	<>
+     <div style={{ width: 100, height: 100, background: '#008c8c', position: 'absolute', left: mouse.x - 50, top: mouse.y - 50 }}/>
+    </>
+  )
+}
+
+const App = () => {
+  return (
+ 	  <div>
+      {/* 显示坐标的简单效果 */}
+      <MouseListener render={ renderPoint } />
+			{/* div跟随鼠标坐标变化而移动的效果 */}
+      <MouseListener render={ renderDiv }/>
+    </div>
+  )
+}
+```
+
