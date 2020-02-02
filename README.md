@@ -1584,11 +1584,11 @@ ReactDOM.render(<App/>, document.getElementById('root'))
 
 真实DOM：
 
-![s1](/s1.png)
+![s1](/s1-0619585.png)
 
 组件结构：
 
-![s2](/s2.png)
+![s2](/s2-0619618.png)
 
 
 
@@ -1596,4 +1596,10 @@ ReactDOM.render(<App/>, document.getElementById('root'))
 
 1. React中的事件是包装过的
 2. 它的事件冒泡是根据虚拟DOM树来冒泡的，与真实的DOM树无关
+
+
+
+### 错误边界
+
+默认情况下，若一个组件在渲染期间（render）发生错误，会导致整个组件树全部被卸载
 
