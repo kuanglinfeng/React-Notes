@@ -1742,10 +1742,103 @@ export default ErrorBound
 - React节点类型：
   - React DOM节点：由`React.createElement`创建，创建该节点的React元素类型(type)是一个字符串
   - React 组件节点：由`React.createElement`创建，创建该节点的React元素类型是一个函数或者是类
-  - React 文本节点：由字符串创建
-  - React 空节点：由null、undefined、false创建
+  - React 文本节点：由字符串、数字创建
+  - React 空节点：由null、undefined、false、true创建
   - React 数组节点：由一个数组创建
 - 真实DOM：通过document.createElement创建的dom元素
 
 ![xuanran](./img/xuanran.png)
 
+
+
+#### 首次渲染（新节点渲染）
+
+1. 通过参数的值创建节点
+2. 根据不同的节点，做不同的事情
+   1. 文本节点：通过`document.createTextNode`创建真实的文本节点
+   2. 空节点：什么都不做
+   3. 数组节点：遍历数组，将数组每一项递归创建节点（回到1进行反复操作，直到结束）
+   4. DOM节点：通过`document.createElement`创建真实的DOM元素，设置该真实DOM元素的各种属性，然后遍历对应的React元素的children属性，递归操作（回到1进行反复操作，直到结束）
+   5. 组件节点
+      1. 函数组件：调用函数（该函数必须返回一个可以生成React节点的内容），将该函数的返回结果递归生成节点（回到1进行反复操作，直到结束）
+      2. 类组件：
+         1. 创建该类的实例
+         2. 立即调用对象的生命周期方法：`static getDerivedStateFromProps`
+         3. 运行该对象的render方法，拿到节点对象（将该节点递归操作，回到1进行反复操作）
+3. 生成出虚拟DOM树之后，将该树保存起来，方便后续使用
+4. 将之前生成的真实的DOM对象，加入到容器中
+
+
+
+演示：
+
+```jsx
+const App = (
+	<div className='app'>
+  	<h1>
+    	标题
+      { ['abc', null, <p>段落</p>] }
+    </h1>
+    <p>
+    	{ undefined }
+    </p>
+  </div>
+)
+ReactDOM.render(App, document.getElementById('root'))
+```
+
+以上代码，生成的虚拟DOM树：
+
+![tree](./img/tree.png)
+
+
+
+```jsx
+function App(props) {
+  return (
+    <div>
+      <Comp1 n={5} />
+    </div>
+  )
+}
+
+function Comp1(props) {
+  return <h1>Comp1, { props.n }</h1>
+}
+
+ReactDOM.render(<App />, document.getElementById('root'))
+```
+
+以上代码，生成的虚拟DOM树：
+
+![func comp tree](./img/func comp tree.png)
+
+
+
+```jsx
+class Comp1 extends Component {
+
+  render() {
+    return (
+      <h1>Comp1</h1>
+    )
+  }
+}
+
+class App extends Component {
+
+  render() {
+    return (
+      <div>
+        <Comp1 />
+      </div>
+    )
+  }
+}
+
+ReactDOM.render(<App />, document.getElementById('root'))
+```
+
+以上代码，生成的虚拟DOM树：
+
+![class comp tree](./img/class comp tree.png)
