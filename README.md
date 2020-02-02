@@ -440,6 +440,30 @@ class Tick extends React.Component {
 
 
 
+#### 事件扩展
+
+这里的事件：React内置的DOM组件中的事件
+
+1. 给document注册事件
+2. 几乎所有的元素的事件处理，都在document的事件中处理
+   1. 一些不冒泡的事件，是直接在元素上监听的（如：input元素的onFocus事件是不冒泡的）
+   2. 一些document上面没有的事件，直接在元素上监听
+3. 在document的事件处理中，React会根据虚拟DOM树完成事件函数的调用
+4. React的事件参数，并非真实的DOM事件参数，是React合成的一个对象，该对象类似于真实的DOM的事件参数
+   1. `e.stopPropagation()`，可以阻止事件在虚拟DOM树中冒泡
+   2. `e.nativeEvent`，可以得到真实的DOM的事件参数
+   3. `e.nativeEvent.stopPropagation()`，可以阻止真实的DOM事件冒泡，不过这个函数没啥用，因为最终监听到事件的真实DOM都是document
+   4. `e.nativeEvent.stopImmediatePropagation()`，可以阻止剩余的真实的DOM事件处理程序运行
+   5. 为了提高执行效率，React使用事件对象池（多个e都是相同的引用）来处理事件对象
+
+**注意事项**
+
+1. 如果给真实的DOM注册事件，阻止了事件冒泡，则会导致React的相应事件无法触发
+2. 如果给真实的DOM注册事件，事件会先于React事件运行
+3. 通过React的事件中阻止事件冒泡，无法阻止真实的DOM事件冒泡
+4. 可以通过`e.nativeEvent.stopImmediatePropagation()`，阻止document上剩余事件的执行
+5. 在事件处理程序中，不要异步的使用事件对象e，因为e会被重用（事件对象池机制）
+
 ### 生命周期
 
 生命周期：组件从诞生到销毁会经历一系列的过程，该过程就叫做生命周期。React在组件的生命周期中提供了一系列钩子函数，可以让开发者在函数中注入代码，这些代码就会在适当的时候运行。
@@ -1599,7 +1623,128 @@ ReactDOM.render(<App/>, document.getElementById('root'))
 
 ### 错误边界
 
-默认情况下，若一个组件在渲染期间（render）发生错误，会导致整个组件树全部被卸载
+默认情况下，若一个组件在**渲染期间**（render）发生错误，会导致整个组件树全部被卸载
+
+错误边界：是一个组件，该组件会捕获到渲染期间（render）子组件发生的错误，并有能力阻止错误继续往根组件方向传播
+
+**让某个组件捕获到错误**
+
+1. 编写生命周期函数`getDerivedStateFromError`
+   1. 静态函数
+   2. 运行时间点：渲染子组件的过程中，发生错误之后，在更新页面之前
+   3. **注意：只有子组件发生错误，才会运行该函数**
+   4. 该函数返回一个对象，React会将该对象的属性覆盖掉当前组件的state
+   5. 参数：错误对象
+   6. 通常，该函数用于改变状态，可以根据状态做出相应的显示
+2. 编写生命周期函数`componentDidCatch`
+   1. 实例方法
+   2. 运行时间点：渲染子组件的过程中，发生错误之后，更新页面之后
+   3. **由于其运行时间点比较靠后，因此不太会在该函数中改变状态**
+   4. 通常，该函数用于记录错误消息
+
+**细节**
+
+某些错误，错误边界组件无法捕捉
+
+1. 组件自身的错误
+2. 异步的错误
+3. 事件中的错误
+
+总结：仅处理渲染子组件期间的同步错误
+
+演示：
+
+```jsx
+////////////////  App.js
+import React from 'react'
+import ErrorBound from './components/ErrorBound'
+
+export default function App() {
+  return (
+    <div>
+      {/* 这是一个错误边界组件 其子组件发生错误时 可进行相应的错误处理*/}
+      <ErrorBound>
+        <A />
+      </ErrorBound>
+      <B />
+    </div>
+  )
+}
+
+function A() {
+  return (
+    <div>
+      <h1>A</h1>
+      <AChild />
+    </div>
+  )
+}
+
+function B() {
+  return <h1>B</h1>
+}
+
+function AChild() {
+  // 这里抛出一个错误 如果不处理将会导致整个组件树被销毁
+  throw new Error('error')
+  return <h2>A's Child</h2>
+}
 
 
+/////////////////  ErrorBound.js 错误边界组件
+import React, { PureComponent } from 'react'
+
+class ErrorBound extends PureComponent {
+
+  state = {
+    hasError: false
+  }
+
+  // 运行时间点：渲染子组件的过程中，发生错误之后，在更新页面之前
+  static getDerivedStateFromError(error) {
+    console.log('发生了错误，错误对象', error)
+    return {
+      hasError: true
+    }
+  }
+
+  // 运行时间点：渲染子组件的过程中，发生错误之后，在更新页面之后
+  // componentDidCatch(error, errorInfo) {
+  //   console.log(error, errorInfo)
+  //   this.setState({
+  //     hasError: true
+  //   })
+  // }
+
+  render() {
+    if (this.state.hasError) {
+      return <h1>出现了错误</h1>
+    } else {
+      return this.props.children
+    }
+  }
+}
+
+export default ErrorBound
+```
+
+
+
+### 渲染原理
+
+渲染：生成用于显示的对象，以及将这些对象形成真实的DOM对象
+
+- React元素：React Element,通过`React.createElement`创建（语法糖：JSX ）
+  - 例如：
+  - ```<div><h1>hello react</h1></div>```
+  - ```<App />```
+- React节点：专门用于渲染到UI界面的对象，React会通过React元素，创建React节点，ReactDOM一定是通过React节点来渲染的
+- React节点类型：
+  - React DOM节点：由`createElement`创建，创建该节点的React元素类型(type)是一个字符串
+  - React 组件节点：由`createElement`创建，创建该节点的React元素类型是一个函数或者是类
+  - React 文本节点：由字符串创建
+  - React 空节点：由null、undefined、false创建
+  - React 数组节点：由一个数组创建
+
+![xuanran](/xuanran.png)
 
