@@ -1538,3 +1538,62 @@ const App = () => {
 }
 ```
 
+
+
+### Portals
+
+Portals(插槽)：将一个React元素，渲染到指定的DOM容器中
+
+`ReactDOM.createPortal(React元素，真实的DOM容器)`，该函数返回一个React元素
+
+`ReactDOM.createPortal`用法演示：
+
+```jsx
+///////// index.html 结构
+<body>
+  <div id="root"></div>
+  <div class="modal"></div>
+</body>
+
+///////// index.js 
+
+const App = () => {
+  return (
+    <div>
+      <ChildA/>
+    </div>
+  )
+}
+
+// 在真实的DOM渲染中，会将<div className={ 'child-a' }><ChildB/></div>渲染到
+// 类名为'modal'的真实DOM中
+// 但是，React组件结构不会发生改变 依旧是:
+// <App>
+//	 <ChildA>
+//      <ChildB />
+//   <ChildA/>
+// </App>
+const ChildA = () => ReactDOM.createPortal(
+  <div className={ 'child-a' }><ChildB/></div>, document.querySelector('.modal')
+)
+
+const ChildB = () => (<div className={ 'child-b' }/>)
+
+ReactDOM.render(<App/>, document.getElementById('root'))
+```
+
+真实DOM：
+
+![s1](/s1.png)
+
+组件结构：
+
+![s2](/s2.png)
+
+
+
+**注意事件冒泡**
+
+1. React中的事件是包装过的
+2. 它的事件冒泡是根据虚拟DOM树来冒泡的，与真实的DOM树无关
+
