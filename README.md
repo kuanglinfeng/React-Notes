@@ -1765,6 +1765,7 @@ export default ErrorBound
          1. 创建该类的实例
          2. 立即调用对象的生命周期方法：`static getDerivedStateFromProps`
          3. 运行该对象的render方法，拿到节点对象（将该节点递归操作，回到1进行反复操作）
+         4. 将该组件的`componentDidMount`加入到执行队列（先进先执行），当整个虚拟DOM树全部构建完毕，并且将真实的DOM对象加入到真实的DOM容器中后，执行该队列
 3. 生成出虚拟DOM树之后，将该树保存起来，方便后续使用
 4. 将之前生成的真实的DOM对象，加入到容器中
 
@@ -1811,7 +1812,7 @@ ReactDOM.render(<App />, document.getElementById('root'))
 
 以上代码，生成的虚拟DOM树：
 
-![func comp tree](./img/func comp tree.png)
+![func-comp-tree](./img/func-comp-tree.png)
 
 
 
@@ -1841,7 +1842,5 @@ ReactDOM.render(<App />, document.getElementById('root'))
 
 以上代码，生成的虚拟DOM树：
 
-![class comp tree](./img/class comp tree.png)
-
-
+![class-comp-tree](./img/class-comp-tree.png)
 
