@@ -1842,3 +1842,6 @@ ReactDOM.render(<App />, document.getElementById('root'))
 以上代码，生成的虚拟DOM树：
 
 ![class comp tree](./img/class comp tree.png)
+
+
+
