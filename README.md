@@ -1584,13 +1584,11 @@ ReactDOM.render(<App/>, document.getElementById('root'))
 
 真实DOM：
 
-![s1](/s1-0619585.png)
+![s1](/s1.png)
 
 组件结构：
 
-![s2](/s2-0619618.png)
-
-
+![s2](/s2.png)
 
 **注意事件冒泡**
 
