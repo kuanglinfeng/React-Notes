@@ -1608,11 +1608,11 @@ ReactDOM.render(<App/>, document.getElementById('root'))
 
 真实DOM：
 
-![s1](/s1.png)
+![s1](./img/s1.png)
 
 组件结构：
 
-![s2](/s2.png)
+![s2](./img/s2.png)
 
 **注意事件冒泡**
 
@@ -1740,11 +1740,12 @@ export default ErrorBound
   - ```<App />```
 - React节点：专门用于渲染到UI界面的对象，React会通过React元素，创建React节点，ReactDOM一定是通过React节点来渲染的
 - React节点类型：
-  - React DOM节点：由`createElement`创建，创建该节点的React元素类型(type)是一个字符串
-  - React 组件节点：由`createElement`创建，创建该节点的React元素类型是一个函数或者是类
+  - React DOM节点：由`React.createElement`创建，创建该节点的React元素类型(type)是一个字符串
+  - React 组件节点：由`React.createElement`创建，创建该节点的React元素类型是一个函数或者是类
   - React 文本节点：由字符串创建
   - React 空节点：由null、undefined、false创建
   - React 数组节点：由一个数组创建
+- 真实DOM：通过document.createElement创建的dom元素
 
-![xuanran](/xuanran.png)
+![xuanran](./img/xuanran.png)
 
