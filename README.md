@@ -1844,3 +1844,113 @@ ReactDOM.render(<App />, document.getElementById('root'))
 
 ![class-comp-tree](./img/class-comp-tree.png)
 
+
+
+#### 更新节点
+
+更新的场景：
+
+1. 重新调用`ReactDOM.render`，完全重新生成节点树
+   1. 触发根节点更新
+2. 在类组件的实例对象中调用`setState`，会导致该实例所在的节点更新
+
+##### 节点的更新
+
+- 如果调用的是`ReactDOM.render`，进入根节点的**对比（diff）更新**
+- 如果调用的是`setState`
+  - 1. 运行生命周期函数，`static getDerivedStateFromProps`
+  - 2. 运行`shouldComponentUpdate`，如果该函数返回false，终止当前流程
+  - 3. 运行render，得到一个新的节点，进入该新的节点的**对比更新**
+  - 4. 运行生命周期函数`getSnapshotBeforeUpdate`加入执行队列，以待将来执行
+  - 5. 运行生命周期函数`componentDidUpate`加入执行队列，以待将来执行
+
+后续步骤：
+
+1. 完成真实的DOM更新
+2. 依次调用执行队列中的`componentDidMount`
+3. 依次调用执行队列中的`getSnapshotBeforeUpdate`
+4. 依次调用执行队列中的`componentDidUpate`
+5. 依次调用执行队列中的`componentWillUnmount`
+
+
+
+##### 对比更新
+
+
+
+将新产生的节点，对比之前虚拟DOM中的节点，发现差异，完成更新
+
+问题：对比之前DOM树的哪个节点
+
+React为了提高对比效率，做出以下假设：
+
+1. 假设节点不会出现层级的移动（对比时，直接找到旧树中对应位置的节点进行对比）
+2. 不同的节点类型会生成不同的结构
+   1. 相同的节点类型：节点本身的类型相同，如果是由React元素生成，type值还必须一致
+   2. 其它的，都属于不同的节点类型
+3. 多个兄弟通过唯一标识（key）来确定对比的新节点（详细解释在下面）
+
+
+
+###### 找到了对比的目标
+
+判断节点类型是否一致
+
+- **一致**
+
+根据不同的节点类型，做不同的事情
+
+**空节点**：不做任何事情
+
+**DOM节点**：
+
+1. 直接重用之前的真实DOM对象
+2. 将其属性的变化记录下，以待将来统一完成更新 （现在不会真正的变化）
+3.  遍历该新的React元素的子元素，**递归对比更新**
+
+**文本节点**：
+
+1. 直接重用之前的真实DOM对象
+2. 将新的文本变化记录下来，将来统一完成更新
+
+**组件节点**：
+
+函数组件：重新调用函数，得到一个节点对象，进入**递归对比更新**
+
+类组件：
+
+1. 重用之前的实例
+2. 调用生命周期方法`getDerivedStateFromProps`
+3. 调用生命周期方法`shouldComponentUpdate`，若该方法返回false，终止
+4. 运行render，得到新的节点对象，进入**递归对比更新**
+5. 将该对象的`getSnapshotBeforeUpdate`加入队列
+6. 将该对象的`componentDidUpdate`加入队列
+
+**数组节点**：遍历数组进行**递归对比更新**
+
+
+
+- **不一致**
+
+
+
+###### 没有找到对比的目标
+
+
+
+### 工具
+
+#### 严格模式
+
+StrictMode（`React.StrictMode`），本质是一个组件，该组件不进行UI渲染，它的作用是在渲染内部组件时，发现不合适的代码
+
+如：
+
+- 识别不安全的生命周期
+- 关于使用过时字符串`ref API`的警告
+- 关于使用废弃的`findDOMNode`方法的警告
+- 检测意外的副作用
+- 检测过时的`context API`
+
+#### Profiler
+
