@@ -1994,6 +1994,8 @@ Hook种类：
 2. useEffect(解决函数组件中无法使用生命周期的问题)
 3. 其它...
 
+注意：使用Hook的时候，如果没有严格按照Hook的规则进行，eslint的一个插件`eslint-plugin-react-hooks`会报出警告
+
 
 
 ### State Hook
@@ -2331,3 +2333,421 @@ export default function App() {
 
 1. 函数名必须以use开头
 2.  调用自定义Hook函数时，应该放到顶层
+
+
+
+例1：很多组件都需要在第一次加载完成后，获取某个api下的列表数据
+
+```jsx
+//// useAllStudents.js
+import { useEffect, useState } from 'react'
+
+async function getAllStudents() {
+  return await fetch('http://mock-api.com/DmgvxyKQ.mock/list')
+    .then(response => response.json()).then(response => response.data.list)
+}
+
+// 自定义Hook
+export default function useAllStudents() {
+  const [students, setStudents] = useState([])
+  // 第一次运行useEffect，先注册异步函数，等到页面渲染完成后再运行
+  // 当页面渲染完成后，运行useEffect里注册的异步函数，拿到了数据，重新设置状态
+  // 状态发生改变，函数重新运行，第二次运行useEffect时发现依赖项数组为空，所以不再执行异步函数
+  // 这时候最后返回从后端请求回来的数据
+  useEffect(() => {
+    (async () => {
+      const students = await getAllStudents()
+      setStudents(students)
+    })()
+  }, [])
+  // 第一次返回空数组
+  // 第二次才返回从后端拿到的数据
+  return students
+}
+
+
+//// App.js 使用自定义Hook 展示数据
+import useAllStudents from './useAllStudents'
+import React from 'react'
+
+export default function App() {
+  const students = useAllStudents()
+  const list = students.map(item => <li key={item}>{item}</li>)
+  return <ul>
+    {list}
+  </ul>
+}
+```
+
+当然，使用高阶组件，也可实现相同的封装。但是，你会发现：
+
+1. 没有Hook方式来得优雅
+2. 高阶组件会导致组件层次嵌套变深
+
+高阶组件版：
+
+```jsx
+import React from 'react'
+
+async function getAllStudents() {
+  return await fetch('http://mock-api.com/DmgvxyKQ.mock/list')
+    .then(response => response.json()).then(response => response.data.list)
+}
+
+function withAllStudents(Comp) {
+  return class AllStudentsWrapper extends React.Component {
+
+    state = {
+      students: []
+    }
+
+    async componentDidMount() {
+      const students = await getAllStudents()
+      this.setState({students})
+    }
+
+    render() {
+      return <Comp {...this.props} {...this.state.students} />
+    }
+  }
+}
+```
+
+例2：很多组件都需要在第一次加载完成后，启动一个计时器，然后在组件销毁时卸载
+
+```jsx
+//// userTimer.js
+import { useEffect } from 'react'
+
+/* eslint "react-hooks/exhaustive-deps": "off" */
+
+/**
+ * 组件首次渲染后，启动一个interval计时器
+ * 组件卸载后，清除该计时器
+ * @param fn
+ * @param duration
+ */
+export default (fn, duration) => {
+  useEffect(() => {
+    const timer = setInterval(fn, duration)
+    return () => {
+      clearInterval(timer)
+    }
+  }, [])
+}
+
+
+//// Test.js
+import React from 'react'
+import useTimer from './useTimer'
+
+export default function Test() {
+  useTimer(() => {
+    console.log('Test组件的一些副作用操作')
+  }, 1000)
+  return <h1>Test组件</h1>
+}
+```
+
+
+
+### Reducer Hook
+
+Flux：Facebook出品的一个数据流框架
+
+1. 规定了数据是单向流动的
+2. 数据存储在数据仓库中（目前，可认为state就是一个存储数据的仓库）
+3. action是改变数据的唯一原因（本质上就是一个对象，action有两个属性）
+   1. type：字符串，动作的类型
+   2. payload：任意类型，动作发生后的附加信息
+4. 具体改变数据的是个函数，该函数叫做reducer
+   1. 该函数接收两个参数
+      1. state：表示当前数据仓库中的数据
+      2. action：描述了如何去改变数据，以及改变数据的一些附加信息
+   2. 该函数必须有一个返回结果，用于表示数据仓库变化之后的数据
+      1. Flux要求，对象是不可变的。如果返回对象，必须创建新的对象
+5. 如果要触发reducer，不可直接调用，而是应该调用一个辅助函数dispatch
+   1. 该函数仅接受一个参数：action
+   2. 该函数会间接去调用reducer，以达到改变数据的目的
+
+
+
+自己手写这个数据流：
+
+```jsx
+import React, { useState } from 'react'
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'increase':
+      return state + 1
+    case 'decrease':
+      return state - 1
+    default:
+      return state
+  }
+}
+
+export default function HookCounter() {
+
+  const [count, setCount] = useState(0)
+
+  function dispatch(action) {
+    const newCount = reducer(count, action)
+    console.log(`日志：n的值  ${count} => ${newCount}`)
+    setCount(newCount)
+  }
+
+  return (
+    <div>
+      <button onClick={() => dispatch({type: 'increase'})}>+</button>
+      <span>{count}</span>
+      <button onClick={() => dispatch({type: 'decrease'})}>-</button>
+    </div>
+  )
+}
+```
+
+使用自定义Hook优化：
+
+```jsx
+import React, { useState } from 'react'
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'increase':
+      return state + 1
+    case 'decrease':
+      return state - 1
+    default:
+      return state
+  }
+}
+
+function useMyReducer() {
+  const [count, setCount] = useState(0)
+  function dispatch(action) {
+    const newCount = reducer(count, action)
+    console.log(`日志：n的值  ${count} => ${newCount}`)
+    setCount(newCount)
+  }
+  return [count, dispatch]
+}
+
+export default function HookCounter() {
+
+  const [count, dispatch] = useMyReducer()
+
+  return (
+    <div>
+      <button onClick={() => dispatch({type: 'increase'})}>+</button>
+      <span>{count}</span>
+      <button onClick={() => dispatch({type: 'decrease'})}>-</button>
+    </div>
+  )
+}
+```
+
+通用化自定义reducer：
+
+```jsx
+import React, { useState } from 'react'
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'increase':
+      return state + 1
+    case 'decrease':
+      return state - 1
+    default:
+      return state
+  }
+}
+
+/**
+ * 通用的useMyReducer函数
+ * @param {function} reducer reducer函数，标准格式的
+ * @param {any} initialState 初始状态
+ */
+function useMyReducer(reducer, initialState) {
+  const [state, setState] = useState(initialState)
+
+  function dispatch(action) {
+    const newState = reducer(state, action)
+    console.log(`日志：  ${state} => ${newState}`)
+    setState(newState)
+  }
+  return [state, dispatch]
+}
+
+export default function HookCounter() {
+
+  const [count, dispatch] = useMyReducer(reducer, 0)
+
+  return (
+    <div>
+      <button onClick={() => dispatch({type: 'increase'})}>+</button>
+      <span>{count}</span>
+      <button onClick={() => dispatch({type: 'decrease'})}>-</button>
+    </div>
+  )
+}
+```
+
+**使用Reducer Hook**
+
+```jsx
+import React, { useState, useReducer } from 'react'
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'increase':
+      return state + 1
+    case 'decrease':
+      return state - 1
+    default:
+      return state
+  }
+}
+
+export default function HookCounter() {
+
+  // useReducer 第三个参数是可选的函数 函数返回数用来替代第二个参数(初始状态)
+  const [count, dispatch] = useReducer(reducer, 7, (secondParam) => {
+    // 传过来的参数是 第二个参数 -> 7
+    console.log(secondParam)
+    // 现在初始值不是7 而是100了
+    return 100
+  })
+  
+  // 第三个参数通常没啥用 它的本意是通过对第二个参数进行一大堆运算 再重新得到一个初始值
+
+  return (
+    <div>
+      <button onClick={() => dispatch({type: 'increase'})}>+</button>
+      <span>{count}</span>
+      <button onClick={() => dispatch({type: 'decrease'})}>-</button>
+    </div>
+  )
+}
+```
+
+
+
+### Context Hook
+
+用于获取上下文数据
+
+使用context：
+
+```jsx
+import React from 'react'
+
+const context = React.createContext()
+
+const Provider = context.Provider
+const Consumer = context.Consumer
+
+function Test() {
+  return (
+    <Consumer>
+      { value => <h1>Test, 上下文的值：{ value }</h1> }
+    </Consumer>
+  )
+}
+
+export default function () {
+  return (
+    <div>
+      <Provider value="hello context hook">
+        <Test />
+      </Provider>
+    </div>
+  )
+}
+```
+
+使用Context Hook：
+
+```jsx
+import React, { useContext } from 'react'
+
+const context = React.createContext()
+
+const Provider = context.Provider
+
+function Test() {
+  // 直接获取
+  const value = useContext(context)
+  return <h1>Test, 上下文的值：{ value }</h1>
+}
+
+export default function () {
+  return (
+    <div>
+      <Provider value="hello context hook">
+        <Test />
+      </Provider>
+    </div>
+  )
+}
+```
+
+
+
+### Callback Hook
+
+函数名：useCallback
+
+用于得到一个固定引用值的函数，通常用它进行性能优化
+
+useCallback：
+
+该函数有两个参数：
+
+1. 函数，useCallback会固定该函数的引用，只要依赖项没有发生变化，则始终返回之前函数的地址
+2. 数组，记录依赖项
+
+```jsx
+import React, { useCallback, useState } from 'react'
+
+class Test extends React.PureComponent {
+  render() {
+    console.log('text render')
+    return (
+      <div>
+        <h1>{ this.props.text }</h1>
+        <button onClick={ this.props.onClick }>改变文本</button>
+      </div>
+    )
+  }
+}
+
+function Parent() {
+  console.log('parent render')
+  const [text, setText] = useState('123')
+  const [count, setCount] = useState(0)
+
+  const handleClick = useCallback(() => {
+    setText(Math.random())
+  }, [])
+
+  return (
+    <div>
+      {/* 函数的地址每次渲染都发生了变化 导致子组件跟着重新渲染
+          若子组件是经过优化之后的组件 则可能导致优化失效
+      */ }
+      {/*<Test text={ text } onClick={ () => setText(Math.random) } />*/ }
+
+      {/* 使用useCallback优化 这样当input输入值发生变化 不会去影响Test组件重新渲染了*/ }
+      <Test text={ text } onClick={ handleClick } />
+      <input type="number" value={ count } onChange={ e => setCount(e.target.value) } />
+    </div>
+  )
+}
+
+const App = () => <><Parent /></>
+
+export default App
+```
+
