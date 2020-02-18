@@ -2751,3 +2751,210 @@ const App = () => <><Parent /></>
 export default App
 ```
 
+
+
+### Memo Hook
+
+用于保持一些比较稳定的数据，通常用于性能优化
+
+useMemo和useCallback使用场景类似，但是useMemo相较于useCallback用法更加强大
+
+```jsx
+import React, { useMemo, useState } from 'react'
+
+const Item = (props) => {
+  console.log('Item Render')
+  return <li>{ props.value }</li>
+}
+
+
+// useMemo和useCallback功能类似
+// 区别：useCallback是对函数进行缓存，useMemo可以对任何类型进行缓存
+// useMemo()的第一个参数是一个函数，函数返回值为要缓存的对象，第二个参数是缓存依赖项，
+// 只要依赖项没有发生改变，缓存就不会发生改变。在进行多个DOM渲染时，往往可以极大的提高性能。
+const App = () => {
+
+  const [range, setRange] = useState({ min: 1, max: 1000 })
+  const [inputValue, setInputValue] = useState(0)
+
+  const list = useMemo(() => {
+    const list = []
+    for (let i = range.min; i <= range.max; i++) {
+      list.push(<Item key={ i } value={ i } />)
+    }
+    return list
+  }, [range.min, range.max])
+
+  return (
+    <div>
+      <ul>
+        { list }
+      </ul>
+      {/* input框内容发生改变 逻辑上不应该影响list 所以对list进行缓存 list是否重新渲染
+          只和range的取值范围相关
+      */}
+      <input type="number" value={ inputValue } onChange={ e => setInputValue(+e.target.value) } />
+    </div>
+  )
+}
+
+export default App
+```
+
+
+
+### Ref Hook
+
+Ref Hook用于对ref的缓存，通常用于对某个函数组件节点中某个局部引用进行缓存
+
+```jsx
+import React, { useRef, useState } from 'react'
+
+window.arr = []
+
+const App = () => {
+  // 点击刷新按钮n次 你会发现window.arr中的存储的ref引用都是不同的
+  // const inputRef = React.createRef()
+  
+  // 点击刷新按钮n次 你会发现window.arr中的存储的ref引用都是同一个 这就是useRef的缓存机制
+  const inputRef = useRef()
+  window.arr.push(inputRef)
+  const [refresh, setRefresh] = useState({})
+  return (
+    <div>
+      <input type="text" ref={inputRef} />
+      <button onClick={() => console.log(inputRef.current.value)}>得到input的值</button>
+      <button onClick={() => setRefresh({})}>刷新</button>
+    </div>
+  )
+}
+
+export default App
+```
+
+
+
+### ImperativeHandle Hook
+
+函数：useImperativeHandle()
+
+```jsx
+import React, { useImperativeHandle, useRef } from 'react'
+
+function Test(props, ref) {
+
+  // 第一个参数为ref 第二个参数是个函数 第三个参数是依赖项数组
+  // 如果使用了依赖项，则第一次调用后，会进行缓存，只有依赖项发生变化时才会重新调用函数
+  useImperativeHandle(ref, () => {
+    // 该函数第一次加载组件后调用
+    // 返回值相当于 ref.current = { method(){} }
+    return {
+      method() {
+        console.log('i am a Test Component')
+      }
+    }
+  }, [])
+
+  return <h1 ref={ref}>Test Component</h1>
+}
+
+const TestWrapper = React.forwardRef(Test)
+
+const App = () => {
+
+  const testRef = useRef()
+
+  return (
+    <div>
+      <TestWrapper ref={testRef}/>
+      <button onClick={() => testRef.current.method()}>点击调用Test组件的method方法</button>
+    </div>
+  )
+}
+
+export default App
+```
+
+
+
+### LayoutEffect Hook
+
+浏览器的页面大致渲染过程：
+
+对DOM进行了改动（同步代码） => 浏览器下一次渲染时间点到达 => 对比差异，进行渲染（异步）=> 用户看到新的效果
+
+useEffect: 浏览器渲染完成后，用户看到新的效果后
+
+useLayoutEffect：完成了DOM改动，但还没有呈现给用户。和useEffect的用法没有任何区别，
+
+唯一的区别就是运行的时间点不同。
+
+**应该尽量使用useEffect，因为它不会导致渲染阻塞，如果出现了问题，再考虑useLayoutEffect**
+
+![cur-lifecycle](./img/useLayoutEffect.png)
+
+```jsx
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+
+const App = () => {
+
+  const [count, setCount] = useState(0)
+  const h1Ref = useRef()
+
+  // 使用useEffect时 在内部用ref操作元素DOM时 有可能导致页面一进来会先闪现 0 再 变为 random值
+  // useEffect(() => {
+  //   h1Ref.current.innerText = Math.random().toFixed(2)
+  // })
+  useLayoutEffect(() => {
+    h1Ref.current.innerText = Math.random().toFixed(2)
+  })
+
+  return (
+    <div>
+      <h1 ref={h1Ref}>{count}</h1>
+      <button onClick={() => setCount(count + 1)}>+</button>
+    </div>
+  )
+}
+
+export default App
+```
+
+
+
+### DebugValue Hook
+
+useDebugValue：用于将自定义Hook的关联数据显示到调试栏
+
+如果创建的自定义Hook通用性比较高，可以选择使用useDebugValue方便调试
+
+```jsx
+import React, { useDebugValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
+
+function useTest() {
+  const [students, setStudents] = useState([])
+  // 使用React DEV Tools 可以看到这个自定义hook信息
+  useDebugValue("学生集合")
+  return students
+}
+
+const App = () => {
+
+  useState(0)
+  useState('abc')
+
+  useEffect(() => {
+    console.log('effect')
+  }, [])
+
+  useTest()
+
+  return (
+    <div>
+    </div>
+  )
+}
+
+export default App
+```
+
