@@ -4421,6 +4421,81 @@ app.use(createLoading())
 
 
 
+## umi
+
+特性：
+
+-  插件化：umi 的整个生命周期都是插件化的，甚至其内部实现就是由大量插件组成，比如 pwa、按需加载、一键切换 preact、一键兼容 ie9 等等，都是由插件实现。
+- 开箱即用：你只需一个 umi 依赖就可启动开发，无需安装 react、preact、webpack、react-router、babel、jest 等等。
+- 约定式路由：不用再去配置路由了，pages目录下的js文件即路由
+
+全局安装umi，会提供一个命令行工具，通过命令可以对umi工程进行操作
+
+- umi dev：使用开发模式启动工程
+- umi build：打包
+
+
+
+### 路由
+
+umi对路由的处理，主要通过两种方式：
+
+1. 约定式：使用约定好的文件夹和文件，来代表页面，umi会根据开发者书写的页面，生成路由配置
+2. 配置式：直接书写路由配置文件
+
+
+
+#### 约定式路由
+
+- umi约定，工程中的pages文件夹中存放的是页面。如果工程包含src目录，则src/pages是页面文件夹
+- umi约定，页面的文件名，以及页面的文件路由，是该页面匹配的路由
+- umi约定，如果页面的文件名是index，则可以省略文件名，即直接访问相应文件的目录就可访问到index
+- umi约定，如果src/layout目录存在，则该目录中的index.js表示的是全局的通用布局，布局中的children则会添加具体的页面（嵌套路由）
+- umi约定，如果pages文件夹中包含_layout.js，则layout.js所在的目录以及其所有的子目录中的页面，共用该布局（嵌套路由）
+- umi约定，pages/404.js，表示404页面，如果页面无匹配，则会渲染该页面，该约定在开发模式中无效，部署后才能看到效果（404约定）
+- umi约定，使用$名称，会产生动态路由。如pages/sub/$id.js，对应的路由就是/sub/:id（动态路由）
+
+路由跳转
+
+1. 声明式
+
+```jsx
+import Link from 'umi/link'; // 实际上就是react-router-dom 中的 Link，umi也可使用NavLink
+
+export default () => (
+  <Link to="/list">Go to list page</Link>
+);
+```
+
+2. 命令式
+
+```jsx
+import router from 'umi/router';
+
+function goToListPage() {
+  router.push('/list');
+}
+```
+
+路由信息
+
+所有的页面、布局组件都会通过属性，收到下面的属性
+
+- match：等同于react-router的match
+- history：等同于react-router的history（history.lcation.query被封装成了一个对象，内部使用的就是query-string进行的封装）
+- location：等同于react-router的location（lcation.query被封装成了一个对象，内部使用的就是query-string进行的封装）
+- route：对应的是路由配置
+
+如果需要在普通组件中获取路由信息，则需要使用withRouter封装，可以通过`umi/withRouter`导入
+
+
+
+
+
+#### 配置式路由
+
+
+
 
 
 
