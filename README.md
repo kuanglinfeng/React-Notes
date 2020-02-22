@@ -2196,7 +2196,7 @@ export default function App() {
    4. 所以，当传递了依赖数据之后，如果数据没有发生变化
       1. **副作用函数只在第一次页面渲染完成后运行**
       2. **清理函数只在卸载组件后运行**
-5. useEffect函数，不传递第二个参数，则默认每次render后都会运行
+5. useEffect函数，不传递第二个参数，则副作用函数默认每次render后都会运行
 6. useEffect闭包
 7. 副作用函数在每次注册时，会覆盖掉之前的副作用函数，因此，尽量保证副作用函数稳定。否则控制起来会比较复杂
 
@@ -3165,6 +3165,40 @@ Router组件会创建一个上下文，并且向上下文中注入一些信息
 
 该上下文对开发者是隐藏的，Route组件若匹配到了地址，则会将这些上下文的信息**作为属性**传入对应的组件
 
+
+
+#### 非路由组件获取路由信息
+
+某些组件，并没有直接放到Route中，而是嵌套在其它普通组件中，因此它的props中没有路由信息，如果这些组件需要获取到路由信息，可以使用下面两种方式：
+
+1. 将路由信息从父组件一层一层传递到子组件（基本不用）
+2. 使用react-router提供的高阶组件`withRouter`，包装要使用的组件，该高阶组件会返回一个新组件，新组件可以使用路由信息
+
+```jsx
+import React from 'react'
+import { BrowserRouter as Router, withRouter } from 'react-router-dom'
+
+const B = (props) => {
+  // 输出路由信息
+  console.log(props)
+  return <h1>组件B</h1>
+}
+
+const NewB = withRouter(B)
+
+export default function () {
+  return (
+    <Router>
+      <NewB />
+    </Router>
+  )
+}
+```
+
+
+
+
+
 #### history
 
 它并不是window.history对象，我们利用该对象无刷新跳转地址
@@ -3214,13 +3248,13 @@ location对象中记录了当前地址的相关信息
 属性：
 
 - isExact：从事实上出发，当前的路径和路由配置的路径是否是精确匹配的
-- path：代码中匹配的路径，如`/news/:year/:month/:day`
+- path：代码中匹配的路径规则，如`/news/:year/:month/:day`
 - url：地址栏的url，如`/news/2020/2/3`
 - params：路径附加的数据信息，如`{year: "2020", month: "2", day: "3"}`
 
 
 
-实际上，在书写Route组件的path属性时，可以书写一个`string pattern`（字符串正则），如`/news:year/:month/:day`，如果传递的day是可选的，那么可以`/news:year/:month/:day?`
+#### 路由传递数据
 
 **向某个页面传递数据的方式**
 
@@ -3228,6 +3262,18 @@ location对象中记录了当前地址的相关信息
 2. **利用search：把数据填写在地址栏中的`?`后，比较常用**
 3. 利用hash：把数据填写到hash后，更少用
 4. **利用params：把数据填写到路径中，常用**
+
+parms方式的补充说明：
+
+实际上，在书写Route组件的path属性时，可以书写一个`string pattern`（字符串正则），如`/news:year/:month/:day`
+
+- 如果传递的day是可选的，那么可以`/news:year/:month/:day?`
+- 如果要约束传递的必须是数字，那么可以`/news/:year(\d+)/:month(\d+)/:day(\d+)`
+- 如果接着后面一定要匹配任意路径，但是得有，那么可以`/news/:year(\d+)/:month(\d+)/:day(\d+)/*`
+
+react-router使用了第三方库`path-to-regexp`来解析路径字符串正则为真正的正则表达式
+
+---
 
 利用路由传递数据的两个经典例子：
 
@@ -3312,3 +3358,1079 @@ export default function () {
 }
 ```
 
+
+
+### 其它组件
+
+#### Link
+
+生成一个无刷新跳转的a元素
+
+属性：
+
+- to
+  - 字符串形式：跳转的目标地址
+  - 对象形式：
+    - pathname：url路径
+    - search：查询参数
+    - hash：哈希
+    - state：附加的状态信息
+- replace：bool值，表示是否替换当前地址，默认是false，即push方式
+- innerRef：可以将内部的a元素的ref附着在传递的对象或函数参数上
+  - 函数
+  - ref对象
+
+自己写一个简化版的Link：
+
+```jsx
+import React from 'react'
+import { withRouter } from 'react-router-dom'
+
+function Link(props) {
+  return (
+    <a href=""
+       onClick={ e => {
+         e.preventDefault()
+         props.history.push(props.to)
+       } }
+    >
+      { props.children }
+    </a>
+  )
+}
+
+export default withRouter(Link)
+```
+
+
+
+#### NavLink
+
+是一种特殊的Link，Link组件具备的功能，它都有
+
+它具备的额外功能是：根据当前地址和链接地址，来决定该链接的样式（多了个默认样式类名：`active`，可以通过activeClassName修改为别的名称）
+
+属性：
+
+- activeClassName：匹配成功时使用的类名
+
+- activeStyle：匹配成功时的内联样式
+
+- exact：是否精确匹配
+
+- sensitive：匹配时是否区分大小写
+
+- strict：是否严格匹配最后一个斜杠
+
+  
+
+#### Redirect
+
+重定向组件，当加载到该组件时，会自动跳转到另外一个地址
+
+属性：
+
+- to：跳转的地址
+  - 字符串
+  - 对象
+- push：默认为false，表示跳转使用replace的方式。true，为push方式
+- from：当匹配到from地址规则时才进行跳转，可以是正则
+- exact：是否精确匹配from
+- sensitive：from匹配时是否区分大小写
+- strict：from是否严格匹配最后一个斜杠
+
+
+
+
+
+
+
+## Redux核心概念
+
+### MVC
+
+它是一个UI的解决方案，用于降低UI，以及UI关联的数据的复杂度
+
+**传统的服务器端的MVC**
+
+环境：
+
+1. 服务端需要响应一个完整的HTML
+2. 该HTML中包含页面中需要的数据
+3. 浏览器仅承担渲染页面的作用
+
+以上的这种方式叫做**服务端渲染**，即服务器端将完整的页面组装好后，一起发送给客户端
+
+服务器端需要处理UI中要用到的数据，并且要将数据嵌入到页面中，最终生成一个完整的HTML页面响应
+
+![serverRender](./img/serverRender.png)
+
+
+
+![cRender](./img/cRender.png)
+
+为了降低处理这个过程的复杂度，出现了MVC模式
+
+**Controller**：控制器，处理请求，组装这次请求需要的数据
+
+**Model**：需要用于渲染UI的数据模型
+
+**View**：视图，用于将模型组装到界面中
+
+![serverMVC](./img/serverMVC.png)
+
+
+
+**前端MVC模式的困难**
+
+React解决了 数据 -> 视图 的问题
+
+1. 前端的controller要比服务器复杂很多，因为前端中的controller处理的是用户的操作，而用户的操作场景是复杂的
+2. 对于那些组件化的框架，比如Vue，React它们使用的是单向数据流。若需要共享数据，则必须将数据提升到顶层组件，然后数据再一层一层传递，极其繁琐
+   1. 虽然可以使用上下文来提供共享数据，但对数据的操作难以监控，容易导致调试错误的困难，以及数据还原的困难
+   2. 若开发一个大中型项目，共享的数据很多，会导致上下文中的数据非常复杂
+
+因此，前端需要一个独立的数据解决方案
+
+**Flux**
+
+Fackbook提出的数据解决方案，它的最大历史意义在于，它引入了action的概念
+
+action是一个普通的对象，用于描述要干什么
+
+store表示数据仓库，用于存储共享数据。还可以根据不同的action更改仓库中的数据
+
+![flux](./img/flux.png)
+
+示例：
+
+```js
+var loginAction = {
+  type: 'login',
+  payload: {
+    loginId: 'admin',
+    loginPwd: '123123'
+  }
+}
+
+var deleteAction = {
+  type: 'delete',
+  payload: 1 // 用户ID
+}
+```
+
+
+
+**Redux**
+
+在Flux基础上，引入了reducer的概念
+
+reducer：处理器，用于根据action来处理数据，处理后的数据会被仓库重新保存
+
+redux的流程：
+
+![redux](./img/redux.png)
+
+代码示例：
+
+```jsx
+import { createStore } from 'redux'
+
+// 假设仓库中仅存放了一个数字，该数字的变化可能是加1或者减1
+// 约定action的格式：{type: "操作类型", payload: 附加数据}
+
+// 初始状态
+const initState = 0
+
+/**
+ * reducer 本质上就是一个普通函数
+ * @param state 之前仓库中的数据
+ * @param action 描述要做什么的对象
+ * @return number 返回一个新的状态
+ */
+function reducer(state = initState, action) {
+  if (action.type === 'increase') {
+    return state + 1
+  } else if (action.type === 'decrease') {
+    return state - 1
+  } else {
+    return state
+  }
+}
+
+const store = createStore(reducer, initState)
+
+const increaseAction = {
+  type: 'increase'
+}
+
+// 得到仓库中当前的数据
+// 输出 0
+console.log(store.getState())
+
+// 向仓库分发action
+store.dispatch(increaseAction)
+
+// 得到仓库中当前的数据
+// 输出 1
+console.log(store.getState())
+```
+
+
+
+### action
+
+1. action是一个plain-object（平面对象）
+   1. 它的`__proto__`指向Object.prototype
+2. 通常，使用payload属性表示附加数据（不是强制要求）
+3. action中必须有type属性，该属性用于描述操作的类型
+   1. 但是，没有对type类型做出要求
+4. 在大型项目中，由于操作类型非常多，为了避免硬编码（hard code），会将action的类型存放到一个或一些单独的文件中
+5. 为了方便传递action，通常会使用action创建函数来创建action
+   1. action创建函数应为无副作用的纯函数
+   2. 纯函数：不能以任何形式改动参数、不可以有异步、不能对外部的数据造成影响
+
+```js
+function actionCreator(newNum) {
+  return {
+    type: CHANGE,
+    payload: newNum
+  }
+}
+```
+
+6. 为了方便利用action创建函数来分发action，redux提供了一个函数`bindActionCreators`，该函数用于增强action创建函数的功能，使它不仅可以创建并且创建后可以自动完成分发
+
+
+
+### reducer
+
+reducer是用于改变数据的函数
+
+1. 一个数据仓库，有且仅有一个reducer，并且通常情况下，一个工程只有一个仓库
+2. 为了方便管理，通常会将reducer放到单独的文件中
+3. reducer被调用的时机
+   1. 通过store.dispatch，分发了一个action
+   2. 当创建一个store的时候（调用`createStore`时的初始化操作），会调用一次reducer
+      1. 可以利用这一点，用reducer初始化状态
+      2. 创建仓库时，不传递任何默认状态
+      3. 将reducer的参数state设置一个默认值
+4. reducer内部通常用switch分支
+5. **reducer必须是一个没有副作用的纯函数**
+   1. 为什么要是纯函数？
+      1. 纯函数有利于测试和调试
+      2. 有利于还原数据
+      3. 有利于将来和react结合时的优化
+   2. 具体要求
+      1. 不能改变参数，因此若要让状态变化，必须得到一个新的状态
+      2. 不能有异步
+      3. 不能对外部环境造成影响
+6. 由于在大中型项目中，操作比较复杂，数据结构也比较复杂，因此，需要对reducer进行细分
+   1. redux提供了一个方法`combineReducers`， 可以帮助我们更加方便的合并reducer
+   2. `combineReducers`：合并reducer，得到一个新的reducer，将新的reducer管理一个对象，该对象中的每一个属性交给对应的reducer管理
+
+```jsx
+import loginUsers from './loginUser'
+import users from './users'
+import { combineReducers } from 'redux'
+
+// 合并多个loginUsers 和 users这两个reducer
+export default (state = {}, action) => {
+  const newState = {
+    loginUsers: loginUsers(state.loginUsers, action),
+    users: users(state.users, action)
+  }
+  return newState
+}
+
+// 相当于以上代码
+// export default combineReducers({
+//   loginUsers,
+//   users
+// })
+```
+
+
+
+### store
+
+store：用于保存数据
+
+通过`createStore()`创建的对象
+
+该对象的成员：
+
+- dispatch：分发一个action
+- getState：得到仓库中当前的状态
+- replaceReducer：替换掉当前的reducer
+- subscribe：注册一个监听器，监听器是一个无参函数，当分发一个action之后，会运行注册的监听器，该函数会返回一个函数，用于取消监听
+- Symbol("observable")
+
+
+
+### 手写`createStore`
+
+```js
+/**
+ * 实现createStore的功能
+ * @param {function} reducer reducer
+ * @param {any} defaultState 默认的状态值
+ */
+export default function (reducer, defaultState) {
+
+  // 当前使用的reducer
+  let currentReducer = reducer
+  
+  // 当前仓库中的状态
+  let currentState = defaultState
+
+  // 记录所有的监听器（订阅者）
+  const listeners = []
+
+  function dispatch(action) {
+    // 验证action
+    if (!isPlainObject(action)) {
+      throw new TypeError('action must be a plain object')
+    }
+    
+    // 验证action的type属性是否存在
+    if (action.type === undefined) {
+      throw new TypeError('action must has a property of "type"')
+    }
+    
+    currentState = currentReducer(currentState, action)
+    
+    // 运行所有的监听器（订阅者）
+    listeners.forEach(listener => listener())
+  }
+  
+  function getState() {
+    return currentState
+  }
+
+  /**
+   * 添加一个监听器
+   * @param listener
+   */
+  function subscribe(listener) {
+    // 将监听器加入到数组中
+    listeners.push(listener)
+    
+    // 是否已经移除
+    let isRemove = false
+    
+    // 返回一个取消监听的函数
+    return () => {
+      if (isRemove) return
+      // 将listener从数组中移除
+      const index = listeners.indexOf(listener)
+      listeners.splice(index, 1)
+      isRemove = true
+    }
+  }
+
+  // 创建仓库时，需要分发一次初始的action
+  dispatch({
+    type: `@@redux/INIT${getRandomString(6)}`
+  })
+
+  return {
+    dispatch,
+    getState,
+    subscribe
+  }
+}
+
+/**
+ * 判断某个对象是否是plain-object
+ * @param o
+ */
+function isPlainObject(o) {
+  if (typeof o !== 'object')  return false
+  return Object.getPrototypeOf(o) === Object.prototype
+}
+
+/**
+ * 得到一个指定长度的中间用点分隔的随机字符串
+ * @param length
+ */
+function getRandomString(length) {
+  return Math.random().toString(36).substr(2, length).split('').join('.')
+}
+```
+
+
+
+### 手写`bindActionCreators`
+
+回顾bindActionCreators的用法：
+
+```jsx
+import React from 'react'
+import { createStore, bindActionCreators } from 'redux'
+
+const reducer = (state = { count: 0 }, action) => {
+  switch (action.type) {
+    case 'decrease':
+      return { count: state.count - 1 }
+    case 'increase':
+      return { count: state.count + 1 }
+    default:
+      return state
+  }
+}
+
+const store = createStore(reducer)
+
+// action创建函数
+const createDecreaseAction = () => ({ type: 'decrease' })
+const createIncreaseAction = () => ({ type: 'increase' })
+
+// 放到对象里
+const actionCreators = {
+  decrease: createDecreaseAction,
+  increase: createIncreaseAction
+}
+
+const bindedActionCreators = bindActionCreators(actionCreators, store.dispatch)
+
+// 当然不放到对象里 单个actionCreator函数也是可以的
+// const bindedDecreaseCreator = bindedActionCreators(createDecreaseAction, store.dispatch)
+
+// 绑定好了action就可以帮你省略掉dispatch这一步 直接触发就好了
+bindedActionCreators.decrease()
+console.log(store.getState())  // -1
+
+bindedActionCreators.increase()
+console.log(store.getState())  // 0
+```
+
+自己实现`bindActionCreators`：
+
+```js
+export default function bindActionCreators(actionCreators, dispatch) {
+  if (typeof actionCreators === 'function') {
+    return getAutoDispatchActionCreator(actionCreators, dispatch)
+  } else if (typeof actionCreators === 'object') {
+    const result = {}
+    for (const key in actionCreators) {
+      if (actionCreators.hasOwnProperty(key)) {
+        const actionCreator = actionCreators[key]
+        if (typeof actionCreator === 'function') {
+          result[key] = getAutoDispatchActionCreator(actionCreator, dispatch)
+        }
+      }
+    }
+    return result
+  } else {
+    throw new TypeError('actionCreators must be an object or function which means action creator')
+  }
+}
+
+/**
+ * 得到一个自动分发的action创建函数
+ * @param actionCreator
+ * @param dispatch
+ */
+function getAutoDispatchActionCreator(actionCreator, dispatch) {
+  return function (...args) {
+    const action = actionCreator(...args)
+    dispatch(action)
+  }
+}
+```
+
+
+
+### 手写`combineReducers`
+
+回顾`combineReducers`的用法：
+
+```jsx
+import React from 'react'
+import { createStore, combineReducers } from 'redux'
+
+const counterReducer = (state = { count: 0 }, action) => {
+  switch (action.type) {
+    case 'decrease':
+      return { count: state.count - 1 }
+    case 'increase':
+      return { count: state.count + 1 }
+    default:
+      return state
+  }
+}
+
+const welcomeReducer = (state = { greeting: 'Hello Sir!' }, action) => {
+  if (action.type === 'madam') {
+    return { greeting: 'Hi Madam!' }
+  } else {
+    return state
+  }
+}
+
+const reducer = combineReducers({counterReducer, welcomeReducer})
+
+const store = createStore(reducer)
+
+// {counterReducer: {...}, welcomeReducer: {...}}
+console.log(store.getState())
+```
+
+combineReducers功能：组装多个reducer，返回一个reducer，数据使用一个对象表示，对象的属性名与传递的参数对象保持一致
+
+自己实现combineReducers：
+
+```js
+export default function combineReducers(reducers) {
+  // 1. 验证
+  validateReducers(reducers)
+
+  /**
+   * 返回的是一个reducer函数
+   */
+  return function (state = {}, action) {
+    // 要返回的新状态
+    const newState = {}
+    for (const key in reducers) {
+      if (reducers.hasOwnProperty(key)) {
+        const reducer = reducers[key]
+        newState[key] = reducer(state[key], action)
+        // 上面一行代码等价于下面
+        // newState[key] = reducer(undefined, action)
+      }
+    }
+    // 返回状态
+    return newState
+  }
+}
+
+function validateReducers(reducers) {
+  if (typeof reducers !== 'object') {
+    throw new TypeError('reducers must be an object')
+  }
+  if (!isPlainObject(reducers)) {
+    throw new TypeError('reducers must be an plain object')
+  }
+  // 验证reducer的返回结果是不是undefined 这里会验证两次
+  for (const key in reducers) {
+    if (reducers.hasOwnProperty(key)) {
+      const reducer = reducers[key]
+      // 传递一个特殊的type值
+      let state = reducer(undefined, {
+        type: getActionTypes().init()
+      })
+      if (state === undefined) {
+        throw new TypeError('reducers must not return undefined')
+      }
+      // 第二次验证
+      state = reducer(undefined, {
+        type: getActionTypes().unknown()
+      })
+      if (state === undefined) {
+        throw new TypeError('reducers must not return undefined')
+      }
+    }
+  }
+}
+
+/**
+ * 判断某个对象是否是plain-object
+ * @param o
+ */
+function isPlainObject(o) {
+  if (typeof o !== 'object')  return false
+  return Object.getPrototypeOf(o) === Object.prototype
+}
+
+/**
+ * 得到一个指定长度的中间用点分隔的随机字符串
+ * @param length
+ */
+function getRandomString(length) {
+  return Math.random().toString(36).substr(2, length).split('').join('.')
+}
+
+/**
+ * 两个用于验证的 action type
+ * @return {string|{init(): string, unknown(): string}}
+ */
+function getActionTypes() {
+  return {
+    init() {
+      return `@@redux/INIT${getRandomString(6)}`
+    },
+    unknown() {
+      return `@@redux/PROBE_UNKNOWN_ACTION${getRandomString(6)}`
+    }
+  }
+}
+```
+
+
+
+## Redux中间件
+
+中间件，类似于插件，可以在不影响原本功能、并且不改动原本代码的基础上，对其功能进行增强。在redux中，中间件主要用于增强dispatch函数
+
+实现redux中间件的基本原理是，更改仓库中的dispatch函数
+
+![middleware](./img/middleware.png)
+
+
+
+redux中间件书写：
+
+- 中间件本身是一个函数，该函数接收一个store参数，表示创建的仓库，该仓库并非完整的仓库对象，仅包含getState()和dispatch()。该函数运行的时间是在仓库创建之后运行
+- 由于创建仓库后需要自动运行设置的中间件函数，因此，需要在仓库创建时，告诉仓库有哪些中间件
+- 需要调用`applyMiddleware`函数，将函数的返回结果作为createStore的第二或第三个参数
+- 中间件函数必须返回一个dispatch创建函数
+  - 返回的函数需要有一个参数dispatch
+
+应用中间件的两种方式：
+
+```js
+// 方式1
+const store = createStore(reducer, applyMiddleware(logger1, logger2))
+// 方式2
+const store = applyMiddleware(logger1, logger2)(createStore)(reducer)
+```
+
+
+
+## dva
+
+官方网站：https://dvajs.com/，dva是阿里巴巴出品的一个第三库，后来阿里还做了一个脚手架umijs，特别好用
+
+dva不仅仅是一个第三方库，更是一个框架，它主要整合了redux的相关内容，让我们处理数据更加容易，实际上，dva依赖了很多：react、react-router、redux、redux-saga、react-redux、conneced-react-router等
+
+![dva](./img/dva.png)
+
+
+
+### 使用
+
+1. dva默认导出了一个函数，通过调用该函数，可以得到一个dva对象
+
+2. dva对象.router：路由方法，传入一个函数，该函数返回一个React节点，将来应用程序启动后，会自动渲染该节点
+
+3. dva对象.start：该方法用于启动dva应用程序，可以认为就是启动react程序，该函数传入一个选择器，用于选中页面中的某个DOM元素，react会将内容渲染到改元素内部
+
+4. dva对象.model：该方法用于定义一个模型，该模型可以理解为redux的action、reducer、redux-sage副作用处理的整合，整合成一个对象，将该对象传入model方法即可
+
+5. model方法传入一个对象参数，对象的属性有：
+
+   1. namespace：不能省略，命名空间，该属性是一个字符串，字符串的值，会被作为仓库中的属性保存
+
+   2. state：不能省略，该模型的默认状态
+
+   3. reducers：该属性配置为一个对象，对象中的每个方法就是一个reducer。方法的名字，就是匹配的action类型
+
+   4. effects：处理副作用，底层使用redux-saga实现的，该属性配置为一个对象，对象中的每个方法均处理一个副作用，方法的名字，就是匹配的action类型
+
+      1. 函数的参数1：action
+      2. 函数的参数2：封装好的saga/effects对象
+
+   5. subscriptions：配置为一个对象，该对象中可以写任意数量任意名称的属性，每个属性是一个函数，这些函数会在模型加入到仓库后立即运行
+
+      ```js
+      subscriptions: {
+        // 模型加入仓库后立即执行
+        // o为一个对象：{dispatch: fn, history: {}}
+        init(o) {
+          console.log('init', o)
+        }
+      }
+      ```
+
+      
+
+演示1：
+
+```jsx
+import React from 'react'
+import dva from 'dva'
+import Counter from './Counter'
+
+// 得到一个dva对象
+const app = dva()
+
+// 设置跟路由 即启动后，要运行的函数，函数返回结果会被渲染
+app.router(() => <Counter />)
+
+const counterModel = {
+  namespace: 'counter',
+  state: 0,
+  reducers: {
+    increase(state) {
+      return state + 1
+    },
+    decrease(state) {
+      return state - 1
+    },
+    // 第二个参数为附加的数据
+    add(state, { payload }) {
+      return state + payload
+    }
+  }
+}
+
+// 在启动之前 使用定义的模型
+app.model(counterModel)
+
+// 启动dva
+app.start("#root")
+
+////  Counter组件
+import React, {useRef} from 'react'
+import { connect } from 'dva'
+
+function Counter(props) {
+  const inputRef = useRef()
+  return (
+    <div>
+      <button onClick={ props.onDecrease }>-</button>
+      <span>{ props.count }</span>
+      <button onClick={ props.onIncrease }>+</button>
+      <input type="text" ref={inputRef} />
+      <button onClick={() => {
+        const n = parseInt(inputRef.current.value)
+        props.onAdd(n)
+      }}>add</button>
+    </div>
+  )
+}
+
+function mapStateToProps(state) {
+  return {
+    count: state.counter
+  }
+}
+
+function mapDispatchToProps(dispatch) {
+  return {
+    onDecrease() {
+      dispatch({
+        type: 'counter/decrease'
+      })
+    },
+    onIncrease() {
+      dispatch({
+        type: 'counter/increase'
+      })
+    },
+    onAdd(n) {
+      dispatch({
+        type: 'counter/add',
+        payload: n
+      })
+    }
+  }
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(Counter)
+```
+
+演示2 - 使用effects：
+
+现在我们增加两个需求：异步加和异步减
+
+```jsx
+//// counterModel
+export default {
+  namespace: 'counter',
+  state: 0,
+  reducers: {
+    increase(state) {
+      return state + 1
+    },
+    decrease(state) {
+      return state - 1
+    },
+    add(state, { payload }) {
+      return state + payload
+    }
+  },
+  // 一些副作用操作
+  effects: {
+    // 函数第二个参数为一个对象 里面有很多saga的操作副作用的方法
+    // 异步增1 必须写成生成器函数
+    * asyncIncrease(action, sagaEffects) {
+      const { call, put } = sagaEffects
+      yield call(delay, 2000)
+      // 在模型内部可以不写namespace -> counter/
+      yield put({ type: 'increase' })
+    },
+    // 异步减1 必须写成生成器函数
+    * asyncDecrease(action, sagaEffects) {
+      const { call, put } = sagaEffects
+      yield call(delay, 2000)
+      yield put({ type: 'decrease' })
+    }
+  }
+}
+
+function delay(duration) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve()
+    }, duration)
+  })
+}
+
+/////  Counter组件
+import React, {useRef} from 'react'
+import { connect } from 'dva'
+
+function Counter(props) {
+  const inputRef = useRef()
+  return (
+    <div>
+      <button onClick={ props.onDecrease }>-</button>
+      <span>{ props.count }</span>
+      <button onClick={ props.onIncrease }>+</button>
+      <button onClick={ props.onAsyncDecrease }>异步-</button>
+      <button onClick={ props.onAsyncIncrease }>异步+</button>
+      <input type="text" ref={inputRef} />
+      <button onClick={() => {
+        const n = parseInt(inputRef.current.value)
+        props.onAdd(n)
+      }}>add</button>
+    </div>
+  )
+}
+
+function mapStateToProps(state) {
+  return {
+    count: state.counter
+  }
+}
+
+function mapDispatchToProps(dispatch) {
+  return {
+    onDecrease() {
+      dispatch({
+        type: 'counter/decrease'
+      })
+    },
+    onIncrease() {
+      dispatch({
+        type: 'counter/increase'
+      })
+    },
+    onAdd(n) {
+      dispatch({
+        type: 'counter/add',
+        payload: n
+      })
+    },
+    onAsyncDecrease() {
+      dispatch({type: 'counter/asyncDecrease'})
+    },
+    onAsyncIncrease() {
+      dispatch({type: 'counter/asyncIncrease'})
+    }
+  }
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(Counter)
+```
+
+
+
+### 路由
+
+传统方式：
+
+```jsx
+import React from 'react'
+import Counter from './Counter'
+import { BrowserRouter as Router, Route, Switch, NavLink } from 'dva/router'
+
+function Home() {
+  return <h1>首页</h1>
+}
+
+export default function() {
+  return (
+    <Router>
+      <div>
+        <ul>
+          <li><NavLink to="/">首页</NavLink></li>
+          <li><NavLink to="/counter">计数器</NavLink></li>
+        </ul>
+        <div>
+          <Switch>
+            <Route path="/" exact component={Home} />
+            <Route path="/counter" component={Counter} />
+          </Switch>
+        </div>
+      </div>
+    </Router>
+  )
+}
+```
+
+上面那种方式没有将路由和仓库的数据相结合，因此，在数据仓库中就无法知道路由的相关信息了
+
+dva内部实现实际上就是用了connected-react-router这个库来实现数据和路由相关联
+
+connected-react-router：
+
+1. connectRouter函数：传入history对象，得到一个reducer
+2. routerMiddleware函数，传入history对象，得到一个redux中间件
+3. ConnectedRouter组件，传入history对象，提供路由上下文
+
+**在dva中同步路由到仓库：**
+
+1. 在调用dva函数时，配置history对象
+2. 使用ConnectedRouter，提供路由上下文
+
+将路由关联仓库的演示：
+
+```jsx
+/////  index.js
+import routerConfig from './routerConfig'
+import dva from 'dva'
+import counterModel from './models/counter'
+import { createBrowserHistory } from 'history'
+
+// 得到一个dva对象
+const app = dva({
+  // 关联路由history
+  history: createBrowserHistory()
+})
+
+// 设置跟路由 即启动后，要运行的函数，函数返回结果会被渲染
+app.router(routerConfig)
+
+// 在启动之前 使用定义的模型
+app.model(counterModel)
+
+// 启动dva
+app.start("#root")
+
+
+/////  routerConfig.js 文件
+import React from 'react'
+import Counter from './Counter'
+import { routerRedux, Route, Switch, NavLink } from 'dva/router'
+
+// 使用ConnectedRouter
+const { ConnectedRouter } = routerRedux
+
+function Home() {
+  return <h1>首页</h1>
+}
+
+export default function(props) {
+  return (
+    // 注意：history一定要传
+    <ConnectedRouter history={props.history}>
+      <div>
+        <ul>
+          <li><NavLink to="/">首页</NavLink></li>
+          <li><NavLink to="/counter">计数器</NavLink></li>
+        </ul>
+        <div>
+          <Switch>
+            <Route path="/" exact component={Home} />
+            <Route path="/counter" component={Counter} />
+          </Switch>
+        </div>
+      </div>
+    </ConnectedRouter>
+  )
+}
+```
+
+
+
+### 配置
+
+```js
+const app = dva({
+  // 配置
+  history: createBrowserHistory(),
+  initialState: ...
+})
+```
+
+1. history：同步到仓库的history对象
+2. initialState：创建redux仓库时，使用的默认状态，我们通常不会在这里配置默认状态
+3. onError：当仓库的运行发生错误的时候，运行的函数
+   1. 参数1：error对象
+   2. 参数2：dispatch函数
+4. onAction：当触发action时，运行的函数，一般可以用来配置redux中间件
+   1. 传入一个中间件对象
+   2. 传入一个中间件数组
+5. onStateChange：当仓库中的状态发生变化时，运行的函数
+6. onReducer：对模型中的reducer的进一步封装
+   1. 参数为原来的reducer函数
+   2. 返回值为一个新的reducer函数
+7. onEffect：类似于对模型中的effect的进一步封装
+8. extraReducers：用于配置额外的reducer，它是一个对象，对象的每一个属性是一个方法，每个方法就是一个需要合并的reducer，方法名即属性名
+9. extraEnhancers：它是用于封装createStore函数的，dva会将原来的仓库创建函数作为参数传递，返回一个新的用于创建仓库的函数，函数必须放置到数组中
+
+
+
+### 插件
+
+通过`dva对象.use(插件)`，来使用插件，插件本质上就是一个对象，该对象与配置对象相同，dva会在启动时，将传递的插件对象混合到配置中
+
+自己写一个简单的dva插件：
+
+```jsx
+const logger = store => next => action => {
+  console.log("老状态", store.getState())
+  console.log(action)
+  next(action)
+  console.log("新状态", store.getState())
+  console.log(action)
+}
+const myDvaPlugin = {
+  onAction: logger
+}
+
+// 得到一个dva对象
+const app = dva({
+  // 关联路由history
+  history: createBrowserHistory()
+})
+
+// 使用插件
+app.use(myDvaPlugin)
+```
+
+学会使用第三方dva插件，如：`dva-loading`
+
+该插件会在仓库中加入一个状态，名称为loading，它是一个对象，有三个属性
+
+1. global：全局是否正在处理副作用（加载），只要有任何一个模型在处理副作用，则该属性为true
+2. models：一个对象，对象中的属性名以及属性的值，表示哪个对应的模型是否在处理副作用
+3. effects：一个对象，对象中的属性名以及属性值，表示的是哪个action触发了副作用
+
+```jsx
+import createLoading from 'dva-loading'
+
+// 使用dva-loading插件
+app.use(createLoading())
+
+// 后续可以根据仓库中的状态loading的变化来 设置loading效果了
+```
+
+
+
+
+
+
+
+## Ant Design
+
+对于前端开发者：antd实际上就是一个UI库
+
+网站 = 前台 + 后台
+
+前台：给用户访问的页面，通常需要设计师参与制作
+
+后台：给管理员（通常是公司内部员工）使用，通常设计师不参与制作后台页面
