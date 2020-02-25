@@ -4494,6 +4494,92 @@ function goToListPage() {
 
 #### 配置式路由
 
+当使用了路由配置后，约定式路由全部失效。
+
+两种方式书写umi配置(二选一)：
+
+1. 使用根目录下的文件`.umirc.js`
+2. 使用根目录下的文件，`config/config.js`
+
+进行路由配置时，每个皮遏制就是一个匹配规则，并且，每个配置就是一个对象，对象的某些属性，会直接形成Route组件的属性
+
+配置时的注意点：
+
+1. component配置项，需要填写页面组件的路径，路径相对与pages文件夹
+2. 如果配置项没有exact，则会自动添加`exact:true`
+3. 每一个路由配置，可以添加任何属性
+4. Routes属性是一个数组，数组的每一项是一个组件路径，路径相对于项目根目录，当匹配到路由后，会转而渲染该属性指定的组件，并会将component组件作为children放到匹配的组件中
+
+路由配置中的信息，同样可放到约定式路由中，方式是，为约定式路由添加第一个文档注释（主食的格式为YAML），需要将注释放到最开始的位置
+
+YAML格式：
+
+- 键值对，冒号后需要加上空格
+- 如果某个属性有多个键或多个值，需要进行缩进（空格）
+
+```jsx
+/**
+ * title: 首页
+ */
+import React from 'react'
+export default function index() {
+  return <h1>首页</h1>
+}
+
+/////  .umi/router.js
+const routers = [
+  ...
+  {
+    path: '/',
+    component: require('../../layouts/index.js').default,
+    // 加载到全局布局组件后 接着匹配组件作为其children
+    routes: [
+      {
+        path: '/',
+        exact: true,
+        component: require('../index.js').default,
+        // YAML格式注释 生成的
+        title: '首页'
+      }
+    ]
+  }
+  ...
+]
+```
+
+
+
+需求1：匹配成功某个路径成功后，接着往下匹配其子路由
+
+```jsx
+export default {
+  routes: [
+    {
+      path: '/',
+      component: '../layout/index.js',
+      exact: false,
+      routes: [
+        {
+          path: '/',
+          component: './index.js',
+          title: '首页'
+        },
+        {
+          path: '/login',
+          component: './login.js',
+          title: '登录页'
+        },
+        {
+          path: '/welcome',
+          component: './welcome',
+          title: '欢迎页'
+        }
+      ]
+    },
+  ]
+}
+```
+
 
 
 
